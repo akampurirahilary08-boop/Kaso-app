@@ -1,0 +1,2486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kaso — Sales Tracking</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#0F6E6A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kaso">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+  :root{
+    --teal:#0F6E6A;
+    --teal-dark:#0B5450;
+    --teal-light:#E4F2F1;
+    --coral:#D85A30;
+    --coral-light:#FBEAE3;
+    --ink:#1B2321;
+    --ink-soft:#5B6764;
+    --line:#DDE5E3;
+    --bg:#F7F9F8;
+    --white:#FFFFFF;
+    --danger:#B3261E;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{max-width:480px;margin:0 auto;min-height:100vh;background:var(--bg);padding-bottom:84px;}
+
+  @media (min-width: 700px){
+    body{background:#E5EBEA;}
+    .app{
+      min-height:calc(100vh - 40px);
+      margin:20px auto;
+      border-radius:24px;
+      box-shadow:0 8px 40px rgba(0,0,0,0.12);
+      overflow:hidden;
+    }
+    nav.tabbar{
+      border-radius:0 0 24px 24px;
+    }
+  }
+
+  /* Tablet: wider frame, multi-column lists */
+  @media (min-width: 700px) and (max-width: 1023px){
+    .app{max-width:680px;position:relative;}
+    nav.tabbar{
+      position:sticky;
+      bottom:0;
+      left:auto;
+      transform:none;
+      width:100%;
+      max-width:none;
+    }
+    #stockList, #historyList, #repTopList{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:0 16px;
+    }
+    #stockList .stock-item, #historyList .sale-item, #repTopList .sale-item{
+      border-bottom:1px solid var(--line);
+    }
+  }
+
+  /* Desktop: sidebar navigation, wide multi-column layout */
+  @media (min-width: 1024px){
+    .app{max-width:720px;}
+    .card{max-width:100%;}
+    #stockList, #historyList, #repTopList{
+      display:grid;
+      grid-template-columns:1fr 1fr 1fr;
+      gap:0 20px;
+    }
+  }
+
+  /* Header */
+  header{
+    background:var(--teal);
+    color:white;
+    padding:20px 20px 28px;
+    border-radius:0 0 20px 20px;
+  }
+  header .brand{display:flex;align-items:center;gap:10px;}
+  header .brand svg{width:32px;height:32px;}
+  header .brand span{font-size:20px;font-weight:600;letter-spacing:-0.3px;}
+  header .subtitle{margin-top:4px;font-size:13px;opacity:0.85;}
+  .stats-row{display:flex;gap:10px;margin-top:18px;}
+  .stat-card{
+    flex:1;background:rgba(255,255,255,0.12);
+    border-radius:12px;padding:12px 14px;
+  }
+  .stat-card .label{font-size:11px;opacity:0.8;text-transform:uppercase;letter-spacing:0.4px;}
+  .stat-card .value{font-size:19px;font-weight:600;margin-top:2px;}
+
+  main{padding:18px 16px;}
+
+  .section-title{
+    font-size:13px;font-weight:600;color:var(--ink-soft);
+    text-transform:uppercase;letter-spacing:0.5px;margin:22px 0 10px;
+  }
+  .section-title:first-child{margin-top:0;}
+
+  .card{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px;
+    margin-bottom:12px;
+  }
+
+  label{display:block;font-size:13px;font-weight:500;color:var(--ink-soft);margin-bottom:6px;}
+  input, select{
+    width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;
+    font-size:15px;background:var(--white);color:var(--ink);margin-bottom:12px;
+  }
+  input:focus, select:focus{outline:2px solid var(--teal);outline-offset:1px;border-color:var(--teal);}
+
+  .row{display:flex;gap:10px;}
+  .row > div{flex:1;}
+
+  button{
+    font-family:inherit;font-size:15px;font-weight:600;
+    border:none;border-radius:10px;padding:13px 16px;cursor:pointer;
+  }
+  .btn-primary{background:var(--teal);color:white;width:100%;}
+  .btn-primary:hover{background:var(--teal-dark);}
+  .btn-secondary{background:var(--teal-light);color:var(--teal-dark);width:100%;}
+  .btn-ghost{background:transparent;color:var(--ink-soft);border:1px solid var(--line);}
+  .btn-scan{background:var(--coral-light);color:var(--coral);white-space:nowrap;}
+
+  .sale-item{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:12px 0;border-bottom:1px solid var(--line);
+  }
+  .sale-item:last-child{border-bottom:none;}
+  .sale-item .info .name{font-weight:600;font-size:14.5px;}
+  .sale-item .info .meta{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+  .sale-item .amount{font-weight:600;color:var(--teal-dark);font-size:15px;}
+  .sale-item .amount.paid::after{content:" ✓";color:var(--teal);}
+
+  .empty{
+    text-align:center;padding:34px 16px;color:var(--ink-soft);
+  }
+  .empty svg{width:40px;height:40px;opacity:0.35;margin-bottom:10px;}
+  .empty p{font-size:13.5px;margin:0;}
+
+  /* Bottom nav */
+  nav.tabbar{
+    position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+    width:100%;max-width:480px;background:white;
+    border-top:1px solid var(--line);
+    display:flex;justify-content:space-around;padding:8px 6px calc(8px + env(safe-area-inset-bottom));
+  }
+  nav.tabbar button.tab{
+    background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;
+    color:var(--ink-soft);font-size:11px;font-weight:500;padding:6px 10px;flex:1;
+  }
+  nav.tabbar button.tab svg{width:20px;height:20px;}
+  nav.tabbar button.tab.active{color:var(--teal);}
+
+  .screen{display:none;}
+  .screen.active{display:block;}
+
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;}
+  .switch{position:relative;width:42px;height:24px;background:var(--line);border-radius:20px;cursor:pointer;transition:background 0.2s;flex-shrink:0;}
+  .switch.on{background:var(--teal);}
+  .switch .knob{position:absolute;top:2px;left:2px;width:20px;height:20px;background:white;border-radius:50%;transition:transform 0.2s;}
+  .switch.on .knob{transform:translateX(18px);}
+
+  .badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 8px;border-radius:6px;}
+  .badge.tax{background:var(--coral-light);color:var(--coral);}
+  .badge.free{background:var(--teal-light);color:var(--teal-dark);}
+
+  .receipt-preview{
+    background:white;border:1px dashed var(--line);border-radius:10px;padding:16px;
+    font-family:'Courier New',monospace;font-size:12.5px;margin-top:8px;
+  }
+  .receipt-preview .rline{display:flex;justify-content:space-between;padding:3px 0;}
+  .receipt-preview hr{border:none;border-top:1px dashed var(--ink-soft);margin:8px 0;}
+
+  .toast{
+    position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
+    background:var(--ink);color:white;padding:10px 18px;border-radius:20px;
+    font-size:13.5px;opacity:0;pointer-events:none;transition:opacity 0.25s;z-index:50;
+  }
+  .toast.show{opacity:1;}
+
+  @media print{
+    body *{visibility:hidden;}
+    #printArea, #printArea *{visibility:visible;}
+    #printArea{display:block !important;position:absolute;top:0;left:0;width:100%;}
+  }
+
+  /* Auth screen */
+  .auth-wrap{
+    min-height:100vh;display:flex;flex-direction:column;justify-content:center;
+    padding:32px 24px;max-width:480px;margin:0 auto;
+  }
+  .auth-logo{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:6px;}
+  .auth-logo svg{width:40px;height:40px;}
+  .auth-logo span{font-size:24px;font-weight:600;color:var(--teal-dark);}
+  .auth-tagline{text-align:center;color:var(--ink-soft);font-size:13.5px;margin-bottom:28px;}
+  .auth-toggle{display:flex;background:var(--teal-light);border-radius:10px;padding:4px;margin-bottom:20px;}
+  .auth-toggle button{flex:1;background:none;padding:9px;font-size:13.5px;border-radius:8px;color:var(--teal-dark);}
+  .auth-toggle button.active{background:white;box-shadow:0 1px 2px rgba(0,0,0,0.08);}
+  .auth-error{color:var(--danger);font-size:12.5px;margin:-4px 0 10px;min-height:16px;}
+  .auth-note{font-size:11.5px;color:var(--ink-soft);text-align:center;margin-top:14px;line-height:1.5;}
+
+  /* Inventory */
+  .stock-item{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:12px 0;border-bottom:1px solid var(--line);gap:10px;
+  }
+  .stock-item:last-child{border-bottom:none;}
+  .stock-item .info .name{font-weight:600;font-size:14.5px;}
+  .stock-item .info .meta{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+  .stock-count{font-weight:700;font-size:15px;padding:4px 10px;border-radius:8px;background:var(--teal-light);color:var(--teal-dark);}
+  .stock-count.low{background:var(--coral-light);color:var(--coral);}
+  .stock-actions{display:flex;gap:6px;}
+  .stock-actions button{padding:6px 10px;font-size:13px;}
+
+  /* Scanner modal */
+  .scan-modal{
+    position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:100;
+    display:none;flex-direction:column;align-items:center;justify-content:center;
+  }
+  .scan-modal.open{display:flex;}
+  .scan-modal video{width:90%;max-width:400px;border-radius:14px;}
+  .scan-frame{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:70%;max-width:280px;height:120px;border:3px solid var(--coral);border-radius:12px;
+    box-shadow:0 0 0 2000px rgba(0,0,0,0.5);
+  }
+  .scan-hint{color:white;font-size:13.5px;margin-top:18px;text-align:center;padding:0 20px;}
+  .scan-close{margin-top:16px;background:white;color:var(--ink);padding:10px 24px;}
+
+  /* Low stock alert popup */
+  .alert-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:90;
+    display:none;align-items:flex-end;justify-content:center;
+  }
+  .alert-overlay.open{display:flex;}
+  .alert-sheet{
+    background:white;width:100%;max-width:480px;border-radius:18px 18px 0 0;
+    padding:20px 20px calc(20px + env(safe-area-inset-bottom));
+    animation:slideUp 0.25s ease-out;
+  }
+  @keyframes slideUp{from{transform:translateY(30px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+  .alert-header{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+  .alert-header svg{width:22px;height:22px;color:var(--coral);flex-shrink:0;}
+  .alert-header .title{font-size:16px;font-weight:700;color:var(--ink);}
+  .alert-sub{font-size:13px;color:var(--ink-soft);margin:2px 0 14px;}
+  .alert-list{max-height:220px;overflow-y:auto;margin-bottom:16px;}
+  .alert-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);}
+  .alert-row:last-child{border-bottom:none;}
+  .alert-row .name{font-size:14px;font-weight:600;}
+  .alert-row .count{font-size:13px;font-weight:700;color:var(--coral);background:var(--coral-light);padding:2px 9px;border-radius:7px;}
+  .alert-actions{display:flex;gap:10px;}
+  .alert-actions button{flex:1;}
+
+  /* Paid feature lock */
+  .locked{position:relative;opacity:0.5;pointer-events:none;}
+  .lock-badge{
+    display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;
+    background:var(--coral-light);color:var(--coral);padding:2px 8px;border-radius:6px;margin-left:6px;
+  }
+  .unlock-card{background:var(--teal-light);border:1px solid var(--teal);}
+
+  /* Trial banner */
+  .trial-banner{
+    background:var(--teal-light);color:var(--teal-dark);
+    padding:9px 16px;font-size:12.5px;text-align:center;font-weight:600;
+  }
+  .trial-banner.expired{background:var(--coral-light);color:var(--coral);}
+
+  /* Locked feature modal */
+  .locked-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:95;
+    display:none;align-items:center;justify-content:center;padding:24px;
+  }
+  .locked-overlay.open{display:flex;}
+  .locked-card{background:white;border-radius:16px;padding:24px;max-width:340px;text-align:center;width:100%;}
+  .locked-card svg{width:36px;height:36px;color:var(--coral);margin-bottom:10px;}
+  .locked-card h3{margin:0 0 6px;font-size:17px;}
+  .locked-card p{font-size:13.5px;color:var(--ink-soft);margin:0 0 16px;line-height:1.5;}
+  .locked-card input{margin-bottom:10px;text-align:center;letter-spacing:2px;font-weight:700;}
+
+  /* Chart */
+  .chart-wrap{display:flex;align-items:flex-end;gap:6px;height:130px;padding:10px 6px 22px;position:relative;}
+  .pie-chart{width:90px;height:90px;border-radius:50%;flex-shrink:0;background:conic-gradient(var(--teal) 0deg 360deg);}
+  .pie-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;}
+  .chart-bar{flex:1;background:var(--teal);border-radius:5px 5px 0 0;min-height:3px;position:relative;}
+  .chart-bar .bar-label{position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-size:9.5px;color:var(--ink-soft);}
+
+  /* Install button */
+  .install-btn{display:none;}
+  .install-btn.show{display:block;}
+</style>
+</head>
+<body>
+
+<div class="auth-wrap" id="authScreen">
+  <div class="auth-logo">
+    <svg viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#0F6E6A"/><path d="M30 25 L30 75" stroke="white" stroke-width="9" stroke-linecap="round"/><path d="M34 52 L65 25" stroke="white" stroke-width="9" stroke-linecap="round"/><path d="M34 52 L67 76" stroke="white" stroke-width="9" stroke-linecap="round"/><circle cx="68" cy="22" r="7" fill="#D85A30"/></svg>
+    <span>Kaso</span>
+  </div>
+  <div class="auth-tagline">Simple sales tracking for your shop</div>
+
+  <div class="auth-toggle">
+    <button id="tabSignup" class="active" onclick="switchAuthTab('signup')">Create account</button>
+    <button id="tabLogin" onclick="switchAuthTab('login')">Log in</button>
+  </div>
+
+  <div id="signupForm">
+    <label>Shop name</label>
+    <input type="text" id="suShopName" placeholder="e.g. Grace General Store">
+    <label>Phone number</label>
+    <input type="tel" id="suPhone" placeholder="e.g. 07XXXXXXXX">
+    <label>Create a 4-digit PIN</label>
+    <input type="password" id="suPin" maxlength="4" inputmode="numeric" placeholder="••••">
+    <div class="auth-error" id="suError"></div>
+    <button class="btn-primary" onclick="handleSignup()">Create account</button>
+  </div>
+
+  <div id="loginForm" style="display:none;">
+    <label>Phone number</label>
+    <input type="tel" id="liPhone" placeholder="e.g. 07XXXXXXXX">
+    <label>PIN</label>
+    <input type="password" id="liPin" maxlength="4" inputmode="numeric" placeholder="••••">
+    <div class="auth-error" id="liError"></div>
+    <button class="btn-primary" onclick="handleLogin()">Log in</button>
+  </div>
+
+  <div class="auth-note">Your account is securely stored and synced, so you can log in from any device.</div>
+</div>
+
+<div class="scan-modal" id="scanModal">
+  <video id="scanVideo" playsinline autoplay muted></video>
+  <div class="scan-frame"></div>
+  <div class="scan-hint" id="scanHint">Point the camera at a barcode</div>
+  <button class="scan-close" onclick="closeScan()">Cancel</button>
+</div>
+
+<div class="alert-overlay" id="lowStockOverlay">
+  <div class="alert-sheet">
+    <div class="alert-header">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span class="title">Low stock alert</span>
+    </div>
+    <div class="alert-sub" id="lowStockSub">These items are running low — restock soon.</div>
+    <div class="alert-list" id="lowStockList"></div>
+    <div class="alert-actions">
+      <button class="btn-ghost" onclick="dismissLowStock()">Dismiss</button>
+      <button class="btn-primary" onclick="goToStockFromAlert()">View stock</button>
+    </div>
+  </div>
+</div>
+
+<div class="app" id="mainApp" style="display:none;">
+  <div id="announcementBanner" style="display:none;margin:0 16px 12px;border-radius:14px;overflow:hidden;background:var(--coral-light);cursor:default;"></div>
+  <div class="trial-banner" id="syncBadge" style="display:none;background:#FFF4E5;color:#B26A00;"></div>
+  <div class="trial-banner" id="trialBanner" style="display:none;cursor:pointer;" onclick="showScreen('settings')"></div>
+
+  <header>
+    <div class="brand">
+      <svg viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="rgba(255,255,255,0.15)"/><path d="M30 25 L30 75" stroke="white" stroke-width="9" stroke-linecap="round"/><path d="M34 52 L65 25" stroke="white" stroke-width="9" stroke-linecap="round"/><path d="M34 52 L67 76" stroke="white" stroke-width="9" stroke-linecap="round"/></svg>
+      <span>Kaso</span>
+    </div>
+    <div class="subtitle">Today, <span id="todayDate"></span></div>
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="label" data-i18n="lbl_today_sales">Today's sales</div>
+        <div class="value" id="todayTotal">UGX 0</div>
+      </div>
+      <div class="stat-card">
+        <div class="label" data-i18n="lbl_transactions">Transactions</div>
+        <div class="value" id="todayCount">0</div>
+      </div>
+    </div>
+    <button class="install-btn" id="installBtn" onclick="triggerInstall()" style="margin-top:14px;background:rgba(255,255,255,0.15);color:white;width:100%;">
+      📲 Install Kaso app
+    </button>
+  </header>
+
+  <main>
+
+    <!-- HOME / ADD SALE -->
+    <div class="screen active" id="screen-home">
+      <div class="section-title" data-i18n="title_record_sale">Record a sale</div>
+      <div class="card">
+        <label>Item name</label>
+        <div class="row">
+          <div style="flex:3">
+            <input type="text" id="itemName" list="itemNameList" placeholder="e.g. Cooking oil 1L" autocomplete="off">
+            <datalist id="itemNameList"></datalist>
+          </div>
+          <div style="flex:1">
+            <button class="btn-scan" style="width:100%;height:44px;margin-top:0;" onclick="openScan('sale')">Scan</button>
+          </div>
+        </div>
+        <label>Barcode — tap Scan, or use a Bluetooth/USB barcode scanner here</label>
+        <input type="text" id="barcode" placeholder="Optional" autocomplete="off">
+        <div class="row">
+          <div>
+            <label>Quantity <span id="qtyUnitLabel" style="color:var(--ink-soft);font-weight:400;"></span></label>
+            <input type="number" id="qty" value="1" min="0" step="0.01">
+          </div>
+          <div>
+            <label>Unit price (UGX)</label>
+            <input type="number" id="price" placeholder="0">
+          </div>
+        </div>
+        <div class="toggle-row">
+          <span style="font-size:14px;">Apply VAT (<span class="vat-rate-label">18</span>%)</span>
+          <div class="switch" id="vatToggle" onclick="toggleVat()"><div class="knob"></div></div>
+        </div>
+        <div class="toggle-row">
+          <span style="font-size:14px;">Paid via Flutterwave</span>
+          <div class="switch" id="fwToggle" onclick="toggleFw()"><div class="knob"></div></div>
+        </div>
+        <div id="totalPreview" style="text-align:right;font-weight:700;font-size:16px;color:var(--teal-dark);margin:10px 0;"></div>
+        <button class="btn-primary" onclick="recordSale()" data-i18n="btn_record_sale">Record sale</button>
+        <button class="btn-secondary" id="printLastBtn" style="display:none;margin-top:10px;" onclick="printReceipt(lastSale)">🖨️ <span data-i18n="btn_print_last">Print last receipt</span></button>
+      </div>
+
+      <div class="section-title" data-i18n="title_recent_sales">Recent sales</div>
+      <div class="card" id="recentSalesCard">
+        <div class="empty" id="emptyState">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h18v18H3z" opacity="0"/><path d="M4 20h16M6 20V10M11 20V6M16 20V13"/></svg>
+          <p>No sales recorded yet.<br>Add your first sale above.</p>
+        </div>
+        <div id="recentSalesList"></div>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="screen" id="screen-history">
+      <div class="section-title" data-i18n="title_all_sales">All sales</div>
+      <div class="card" id="historyCard">
+        <div class="empty" id="historyEmpty"><p>No sales yet.</p></div>
+        <div id="historyList"></div>
+      </div>
+    </div>
+
+    <!-- TAX -->
+    <div class="screen" id="screen-tax">
+      <div class="section-title" data-i18n="title_tax_summary">Tax summary</div>
+      <div class="card">
+        <div class="sale-item"><div class="info"><div class="name">Total sales (this month)</div></div><div class="amount" id="taxGross">UGX 0</div></div>
+        <div class="sale-item"><div class="info"><div class="name">VAT collected (<span class="vat-rate-label">18</span>%)</div></div><div class="amount" id="taxVat">UGX 0</div></div>
+        <div class="sale-item"><div class="info"><div class="name">Net of VAT</div></div><div class="amount" id="taxNet">UGX 0</div></div>
+      </div>
+      <div class="card" style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;">
+        This is an estimate based on sales you've marked as VAT-applicable. Always confirm actual filing requirements with URA or a tax advisor — Kaso doesn't file taxes on your behalf.
+      </div>
+    </div>
+
+    <!-- STOCK -->
+    <div class="screen" id="screen-stock">
+      <div class="section-title" data-i18n="title_add_product">Add product</div>
+      <div class="card">
+        <label>Product name</label>
+        <input type="text" id="invName" placeholder="e.g. Cooking oil 1L">
+        <label>Barcode (optional)</label>
+        <div class="row">
+          <div style="flex:3"><input type="text" id="invBarcode" placeholder="Scan or type"></div>
+          <div style="flex:1"><button class="btn-scan" style="width:100%;height:44px;" onclick="openScan('inventory')">Scan</button></div>
+        </div>
+        <div class="row">
+          <div style="flex:2">
+            <label>Stock quantity</label>
+            <input type="number" id="invQty" placeholder="0" min="0" step="0.01">
+          </div>
+          <div style="flex:1">
+            <label>Unit</label>
+            <select id="invUnit">
+              <option value="pcs">pcs</option>
+              <option value="kg">kg</option>
+              <option value="g">g</option>
+              <option value="L">L</option>
+              <option value="ml">ml</option>
+              <option value="dozen">dozen</option>
+              <option value="box">box</option>
+              <option value="pack">pack</option>
+            </select>
+          </div>
+        </div>
+        <label>Cost price (what you paid, per unit)</label>
+        <input type="number" id="invCost" placeholder="0">
+        <label>Sell price (UGX, per unit)</label>
+        <input type="number" id="invPrice" placeholder="0">
+        <button class="btn-primary" onclick="addInventoryItem()" data-i18n="btn_add_stock">Add to stock</button>
+      </div>
+
+      <div class="section-title" data-i18n="title_current_stock">Current stock</div>
+      <div class="card" id="stockCard">
+        <div class="empty" id="stockEmpty"><p>No products added yet.</p></div>
+        <div id="stockList"></div>
+      </div>
+    </div>
+
+    <!-- REPORTS -->
+    <div class="screen" id="screen-reports">
+      <div class="section-title" data-i18n="title_business_report">Business report</div>
+      <div class="auth-toggle" style="margin-bottom:16px;">
+        <button id="repDay" class="active" onclick="setReportRange('day')">Daily</button>
+        <button id="repWeek" onclick="setReportRange('week')">Weekly</button>
+        <button id="repMonth" onclick="setReportRange('month')">Monthly</button>
+      </div>
+      <button class="btn-secondary" style="margin-bottom:16px;" onclick="exportReportPDF()" data-i18n="btn_export_pdf">Export report as PDF</button>
+      <div class="card" id="repComparisonCard" style="text-align:center;">
+        <div id="repComparisonText" style="font-size:14px;font-weight:600;"></div>
+      </div>
+      <div class="card">
+        <div class="sale-item"><div class="info"><div class="name">Total sales</div></div><div class="amount" id="repTotal">UGX 0</div></div>
+        <div class="sale-item"><div class="info"><div class="name">Transactions</div></div><div class="amount" id="repCount">0</div></div>
+        <div class="sale-item"><div class="info"><div class="name">Average sale</div></div><div class="amount" id="repAvg">UGX 0</div></div>
+        <div class="sale-item"><div class="info"><div class="name">VAT collected</div></div><div class="amount" id="repVat">UGX 0</div></div>
+        <div class="sale-item"><div class="info"><div class="name">Estimated profit</div></div><div class="amount" id="repProfit">UGX 0</div></div>
+        <div class="sale-item"><div class="info"><div class="name">Expenses</div></div><div class="amount" id="repExpenses">UGX 0</div></div>
+        <div class="sale-item" style="border-top:2px solid var(--teal);"><div class="info"><div class="name" style="font-weight:700;">Net profit</div></div><div class="amount" id="repNetProfit" style="font-weight:700;">UGX 0</div></div>
+      </div>
+
+      <div class="section-title" data-i18n="title_sales_trend">Sales trend</div>
+      <div class="card">
+        <div class="chart-wrap" id="salesChart"></div>
+      </div>
+      <div class="section-title" data-i18n="title_top_items">Top-selling items</div>
+      <div class="card" id="repTopCard">
+        <div class="empty" id="repTopEmpty"><p>No sales in this period yet.</p></div>
+        <div id="repTopList"></div>
+      </div>
+      <div class="section-title" data-i18n="title_payment_split">Payment method split</div>
+      <div class="card" style="display:flex;align-items:center;gap:18px;">
+        <div class="pie-chart" id="paymentPie"></div>
+        <div style="flex:1;">
+          <div class="sale-item"><div class="info"><div class="name"><span class="pie-dot" style="background:var(--teal);"></span>Cash</div></div><div class="amount" id="repCash">UGX 0</div></div>
+          <div class="sale-item"><div class="info"><div class="name"><span class="pie-dot" style="background:#D85A30;"></span>Flutterwave</div></div><div class="amount" id="repFw">UGX 0</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPENSES -->
+    <div class="screen" id="screen-expenses">
+      <div class="section-title" data-i18n="title_log_expense">Log an expense</div>
+      <div class="card">
+        <label>What was it for</label>
+        <input type="text" id="expName" placeholder="e.g. Transport, Rent, Restock">
+        <label>Amount (UGX)</label>
+        <input type="number" id="expAmount" placeholder="0">
+        <button class="btn-primary" onclick="addExpense()" data-i18n="btn_log_expense">Log expense</button>
+      </div>
+      <div class="section-title" data-i18n="title_recent_expenses">Recent expenses</div>
+      <div class="card" id="expCard">
+        <div class="empty" id="expEmpty"><p>No expenses logged yet.</p></div>
+        <div id="expList"></div>
+      </div>
+      <div class="card">
+        <div class="sale-item"><div class="info"><div class="name">Total this month</div></div><div class="amount" id="expMonthTotal">UGX 0</div></div>
+      </div>
+    </div>
+
+    <!-- DEBTS -->
+    <div class="screen" id="screen-debts">
+      <div class="section-title">Record a debt</div>
+      <div class="card">
+        <label>Customer name</label>
+        <input type="text" id="debtName" placeholder="e.g. John, or shop next door">
+        <label>Phone (optional)</label>
+        <input type="tel" id="debtPhone" placeholder="e.g. 07XXXXXXXX">
+        <label>Item taken (optional — deducts from stock)</label>
+        <input type="text" id="debtItemName" list="itemNameList" placeholder="e.g. Cooking oil 1L" autocomplete="off">
+        <div class="row">
+          <div>
+            <label>Quantity</label>
+            <input type="number" id="debtItemQty" value="1" min="0" step="0.01">
+          </div>
+          <div>
+            <label>Amount owed</label>
+            <input type="number" id="debtAmount" placeholder="0">
+          </div>
+        </div>
+        <label>Note (optional)</label>
+        <input type="text" id="debtNote" placeholder="e.g. Took 2 bags of sugar on credit">
+        <button class="btn-primary" onclick="addDebt()">Record debt</button>
+      </div>
+
+      <div class="card">
+        <div class="sale-item"><div class="info"><div class="name" style="font-weight:700;">Total outstanding</div></div><div class="amount" id="debtsTotal" style="font-weight:700;">UGX 0</div></div>
+      </div>
+
+      <div class="section-title">Who owes you</div>
+      <div class="card" id="debtsCard">
+        <div class="empty" id="debtsEmpty"><p>No outstanding debts.</p></div>
+        <div id="debtsList"></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="screen" id="screen-settings">
+      <div class="section-title" data-i18n="title_paid_features">Paid features</div>
+      <div class="card unlock-card" id="unlockCard">
+        <div id="lockedState">
+          <div style="font-size:14px;font-weight:600;margin-bottom:4px;">Unlock barcode scanning, receipt printing & Flutterwave</div>
+          <div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:12px;">Subscribe to get your unlock code by email, then enter it below.</div>
+          <a href="https://selar.com/tok284m610" target="_blank" style="text-decoration:none;">
+            <button class="btn-primary" style="width:100%;margin-bottom:14px;">Upgrade — $4.77/month</button>
+          </a>
+          <label>Unlock code</label>
+          <input type="text" id="unlockCodeInput" placeholder="KASO-XXXXXX" style="text-transform:uppercase;">
+          <button class="btn-primary" onclick="tryUnlock()">Unlock</button>
+          <div class="auth-error" id="unlockError"></div>
+        </div>
+        <div id="unlockedState" style="display:none;">
+          <div style="font-size:14px;font-weight:600;color:var(--teal-dark);">✓ Paid features unlocked</div>
+        </div>
+      </div>
+
+      <div class="section-title" data-i18n="title_shop_details">Shop details</div>
+      <div class="card">
+        <button class="btn-secondary" onclick="showScreen('expenses')">Track expenses</button>
+      </div>
+      <div class="card">
+        <button class="btn-secondary" onclick="showScreen('debts')">Track customer debts</button>
+      </div>
+
+      <div class="section-title" data-i18n="title_receipt_printer">Receipt printer</div>
+      <div class="card">
+        <div id="printerStatus" style="font-size:13.5px;color:var(--ink-soft);margin-bottom:10px;">No printer connected</div>
+        <button class="btn-secondary" onclick="pairBluetoothPrinter()" data-i18n="btn_connect_printer">Connect Bluetooth printer</button>
+        <div style="font-size:12px;color:var(--ink-soft);line-height:1.6;margin-top:10px;">
+          Works with most cheap Bluetooth thermal receipt printers (58mm/80mm). Android Chrome only — not supported on iPhone. Turn your printer on and make sure it's in pairing mode before connecting.
+        </div>
+      </div>
+      <div class="card">
+        <label>Shop name</label>
+        <input type="text" id="shopName" placeholder="e.g. Grace General Store" oninput="saveShopName()">
+        <label>Location</label>
+        <input type="text" id="shopLocation" placeholder="e.g. Kikuubo, Kampala" oninput="saveShopLocation()">
+        <label>VAT / Tax rate (%)</label>
+        <input type="number" id="vatRateInput" value="18" min="0" max="100" step="0.1" onchange="setVatRate(this.value)">
+        <div style="font-size:12px;color:var(--ink-soft);margin-top:-6px;">Default is 18% (Uganda). Change this to match your country's tax rate.</div>
+        <label>Currency</label>
+        <select id="currencySelect" onchange="setCurrency(this.value)">
+          <option value="UGX">UGX — Ugandan Shilling</option>
+          <option value="KES">KES — Kenyan Shilling</option>
+          <option value="TZS">TZS — Tanzanian Shilling</option>
+          <option value="NGN">NGN — Nigerian Naira</option>
+          <option value="GHS">GHS — Ghanaian Cedi</option>
+          <option value="USD">USD — US Dollar</option>
+        </select>
+        <div style="font-size:12px;color:var(--ink-soft);margin-top:-6px;">All sales are recorded in UGX. Switching currency here converts the display using live exchange rates (updated daily) — your recorded data always stays accurate in UGX underneath.</div>
+        <label style="margin-top:14px;">Language</label>
+        <select id="languageSelect" onchange="setLanguage(this.value)">
+          <option value="en">English</option>
+          <option value="lg">Luganda</option>
+          <option value="nyn">Runyankole</option>
+          <option value="sw">Kiswahili</option>
+          <option value="fr">Français</option>
+          <option value="ar">العربية</option>
+          <option value="pt">Português</option>
+        </select>
+        <div style="font-size:12px;color:var(--ink-soft);margin-top:-6px;">Translates main menu and key labels. Full translation of all screens is still being added.</div>
+      </div>
+      <div class="section-title" data-i18n="title_flutterwave">Flutterwave payments</div>
+      <div class="card">
+        <label>Flutterwave public key</label>
+        <input type="text" id="fwPublicKey" placeholder="FLWPUBK_TEST-xxxxxxxx" oninput="saveFwKey()">
+        <div style="font-size:12px;color:var(--ink-soft);line-height:1.6;margin-top:-4px;">
+          Get this from your Flutterwave dashboard → Settings → API Keys. Use your <b>Public Key</b> only — never enter your Secret Key here or in any app screen.
+        </div>
+        <button class="btn-secondary" style="margin-top:12px;" onclick="testFwPayment()">Test a payment (UGX 1,000)</button>
+      </div>
+      <div class="card" style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;">
+        This connects the real Flutterwave checkout popup. For full production use — automatically confirming payments landed and matching them to sales — you'll eventually need a small backend to verify transactions server-side with your Secret Key. That's a separate build once you're ready to go live with real customer payments.
+      </div>
+      <div class="section-title" data-i18n="title_feedback">Feedback</div>
+      <div class="card">
+        <div style="font-size:14px;font-weight:600;margin-bottom:8px;">How's Kaso working for you?</div>
+        <div id="ratingStars" style="font-size:26px;margin-bottom:12px;letter-spacing:4px;">
+          <span onclick="setRating(1)" data-star="1">☆</span><span onclick="setRating(2)" data-star="2">☆</span><span onclick="setRating(3)" data-star="3">☆</span><span onclick="setRating(4)" data-star="4">☆</span><span onclick="setRating(5)" data-star="5">☆</span>
+        </div>
+        <textarea id="feedbackMessage" placeholder="Any comments or suggestions? (optional)" style="width:100%;min-height:70px;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font-family:inherit;font-size:15px;margin-bottom:12px;"></textarea>
+        <button class="btn-primary" style="width:100%;" onclick="submitFeedback()">Send feedback</button>
+      </div>
+      <div class="section-title" data-i18n="title_account">Account</div>
+      <div class="card">
+        <div style="font-size:11px;color:var(--ink-soft);font-family:monospace;word-break:break-all;margin-bottom:10px;">
+          Shop ID: <span id="debugShopId">checking...</span><br>
+          Last inventory sync: <span id="debugSyncStatus">checking...</span>
+        </div>
+        <button class="btn-ghost" style="width:100%;" onclick="handleLogout()" data-i18n="btn_logout">Log out</button>
+      </div>
+      <div class="section-title" data-i18n="title_data">Data</div>
+      <div class="card">
+        <button class="btn-ghost" style="width:100%;" onclick="clearAllData()">Clear all sales data</button>
+      </div>
+    </div>
+
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab active" data-screen="home" onclick="showScreen('home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>
+      <span data-i18n="nav_home">Home</span>
+    </button>
+    <button class="tab" data-screen="history" onclick="showScreen('history')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v5h5M3.05 13A9 9 0 1 0 6 5.3L3 8"/></svg>
+      <span data-i18n="nav_history">History</span>
+    </button>
+    <button class="tab" data-screen="tax" onclick="showScreen('tax')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7H6a2 2 0 00-2 2v9a2 2 0 002 2h12a2 2 0 002-2V9a2 2 0 00-2-2h-3M9 7a3 3 0 106 0M9 7a3 3 0 016 0"/></svg>
+      <span data-i18n="nav_tax">Tax</span>
+    </button>
+    <button class="tab" data-screen="stock" onclick="showScreen('stock')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8V7l-3-4H6L3 7v1M21 8v11a2 2 0 01-2 2H5a2 2 0 01-2-2V8M21 8H3M9 12h6"/></svg>
+      <span data-i18n="nav_stock">Stock</span>
+    </button>
+    <button class="tab" data-screen="reports" onclick="showScreen('reports')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+      <span data-i18n="nav_reports">Reports</span>
+    </button>
+    <button class="tab" data-screen="settings" onclick="showScreen('settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09A1.65 1.65 0 0015 4.6a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      <span data-i18n="nav_settings">Settings</span>
+    </button>
+  </nav>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div id="printArea" style="display:none;"></div>
+
+<script src="https://checkout.flutterwave.com/v3.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
+<script>
+/* Persistent local storage — works on any deployed site, survives closing the app */
+const kasoStore = {
+  async get(key){
+    const v = localStorage.getItem(key);
+    return v === null ? null : { key, value: v };
+  },
+  async set(key, value){
+    localStorage.setItem(key, value);
+    return { key, value };
+  }
+};
+
+/* ---------- SUPABASE (real shared backend) ---------- */
+const SUPABASE_URL = "https://fhlcdcxtqkrbzgoshqcm.supabase.co";
+const SUPABASE_KEY = "sb_publishable_xkNqbHldLEoGzYV161s_FQ_eUUaMR_o";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let currentShopId = null;
+
+function shopKey(base){
+  return currentShopId ? `${base}_${currentShopId}` : base;
+}
+
+let sales = [];
+let inventory = [];
+let vatOn = false;
+let fwOn = false;
+let shopName = "Your Shop";
+let shopLocation = "";
+let currentUser = null;
+let scanStream = null;
+let scanTarget = null; // 'sale' or 'inventory'
+let lastSale = null;
+let currentCurrency = 'UGX';
+let vatRate = 18;
+
+async function setVatRate(value){
+  vatRate = parseFloat(value) || 0;
+  await kasoStore.set(shopKey('kaso_vat_rate'), String(vatRate));
+  document.querySelectorAll('.vat-rate-label').forEach(el => el.textContent = vatRate);
+}
+
+async function loadVatRate(){
+  try{
+    const r = await kasoStore.get(shopKey('kaso_vat_rate'));
+    if(r) vatRate = parseFloat(r.value);
+    const input = document.getElementById('vatRateInput');
+    if(input) input.value = vatRate;
+    document.querySelectorAll('.vat-rate-label').forEach(el => el.textContent = vatRate);
+  }catch(e){}
+}
+let exchangeRates = null; // rates relative to UGX, fetched live
+
+function fmt(n){
+  let amount = n;
+  if(currentCurrency !== 'UGX' && exchangeRates && exchangeRates[currentCurrency]){
+    amount = n * exchangeRates[currentCurrency];
+  }
+  const decimals = currentCurrency === 'UGX' ? 0 : 2;
+  return currentCurrency + " " + amount.toLocaleString(undefined, {minimumFractionDigits: decimals, maximumFractionDigits: decimals});
+}
+
+async function fetchExchangeRates(){
+  try{
+    const cached = await kasoStore.get('kaso_exchange_rates');
+    if(cached){
+      const parsed = JSON.parse(cached.value);
+      const ageHours = (Date.now() - parsed.fetchedAt) / (1000*60*60);
+      if(ageHours < 24){
+        exchangeRates = parsed.rates;
+        return;
+      }
+    }
+  }catch(e){}
+
+  try{
+    const res = await fetch('https://open.er-api.com/v6/latest/UGX');
+    const data = await res.json();
+    if(data.result === 'success'){
+      exchangeRates = data.rates;
+      await kasoStore.set('kaso_exchange_rates', JSON.stringify({rates: exchangeRates, fetchedAt: Date.now()}));
+    }
+  }catch(e){
+    console.error("Couldn't fetch live exchange rates — falling back to UGX display:", e);
+    // Fall back to a cached copy even if stale, better than nothing
+    try{
+      const cached = await kasoStore.get('kaso_exchange_rates');
+      if(cached) exchangeRates = JSON.parse(cached.value).rates;
+    }catch(e2){}
+  }
+}
+
+async function setCurrency(code){
+  currentCurrency = code;
+  await kasoStore.set('kaso_currency', code);
+  if(code !== 'UGX' && !exchangeRates){
+    showToast("Loading live exchange rate…");
+    await fetchExchangeRates();
+  }
+  render();
+  showToast(code === 'UGX' ? "Currency set to UGX" : "Currency set to " + code + " (live rate applied)");
+}
+
+async function loadCurrency(){
+  try{
+    const r = await kasoStore.get('kaso_currency');
+    if(r) currentCurrency = r.value;
+    const sel = document.getElementById('currencySelect');
+    if(sel) sel.value = currentCurrency;
+    if(currentCurrency !== 'UGX') await fetchExchangeRates();
+  }catch(e){}
+}
+
+/* ---------- LANGUAGE (covers main nav; full-screen translation coming later) ---------- */
+const TRANSLATIONS = {
+  en: { nav_home:"Home", nav_history:"History", nav_tax:"Tax", nav_stock:"Stock", nav_reports:"Reports", nav_settings:"Settings",
+    lbl_today_sales:"Today's sales", lbl_transactions:"Transactions", btn_record_sale:"Record sale", btn_print_last:"Print last receipt",
+    title_recent_sales:"Recent sales", btn_add_stock:"Add to stock", title_current_stock:"Current stock", title_business_report:"Business report",
+    btn_export_pdf:"Export report as PDF", title_log_expense:"Log an expense", title_recent_expenses:"Recent expenses", btn_logout:"Log out", title_all_sales:"All sales", title_tax_summary:"Tax summary", title_add_product:"Add product", title_sales_trend:"Sales trend", title_top_items:"Top-selling items", title_payment_split:"Payment method split", title_paid_features:"Paid features", title_shop_details:"Shop details", title_receipt_printer:"Receipt printer", title_flutterwave:"Flutterwave payments", title_feedback:"Feedback", title_account:"Account", title_data:"Data", btn_log_expense:"Log expense", btn_connect_printer:"Connect Bluetooth printer" },
+  lg: { nav_home:"Awaka", nav_history:"Ebyafaayo", nav_tax:"Omusolo", nav_stock:"Ebiweebwa", nav_reports:"Alipoota", nav_settings:"Entegeka",
+    lbl_today_sales:"Ebiguzibwa leero", lbl_transactions:"Emikolo", btn_record_sale:"Wandiika okutunda", btn_print_last:"Kuba lisiiti esembayo",
+    title_recent_sales:"Ebiguzibwa ebisembayo", btn_add_stock:"Yongera ebiweebwa", title_current_stock:"Ebiweebwa ebiriwo", title_business_report:"Alipoota y'obusuubuzi",
+    btn_export_pdf:"Fulumya alipoota nga PDF", title_log_expense:"Wandiika ensasaanya", title_recent_expenses:"Ensasaanya ezisembayo", btn_logout:"Fuluma", title_all_sales:"Ebiguzibwa byonna", title_tax_summary:"Omusolo gwonna", title_add_product:"Yongera ekintu", title_sales_trend:"Endowooza y'obuguzi", title_top_items:"Ebisinga okuguzibwa", title_payment_split:"Engeri y'okusasula", title_paid_features:"Ebintu ebisasulwa", title_shop_details:"Ebikwata ku dduuka", title_receipt_printer:"Mashini ya lisiiti", title_flutterwave:"Okusasula Flutterwave", title_feedback:"Ebirowoozo", title_account:"Akawunti", title_data:"Data", btn_log_expense:"Wandiika ensasaanya", btn_connect_printer:"Yunga mashini ya Bluetooth" },
+  nyn: { nav_home:"Omuka", nav_history:"Ebyahingiirweho", nav_tax:"Omusolo", nav_stock:"Ebicweka", nav_reports:"Empapura", nav_settings:"Enteekateeko",
+    lbl_today_sales:"Ebigurizibwe erizooba", lbl_transactions:"Emirimo", btn_record_sale:"Handiika okutunda", btn_print_last:"Teereka risiti eheruka",
+    title_recent_sales:"Ebigurizibwe ebiheruka", btn_add_stock:"Yongyeraho ebicweka", title_current_stock:"Ebicweka ebiriho", title_business_report:"Empapura y'obusuubuzi",
+    btn_export_pdf:"Shohoza empapura nka PDF", title_log_expense:"Handiika okushasura", title_recent_expenses:"Okushasura okuheruka", btn_logout:"Shohoka", title_all_sales:"Ebigurizibwe byona", title_tax_summary:"Omusolo gwona", title_add_product:"Yongyeraho eky'okugurwa", title_sales_trend:"Enteekateeko y'okugurizibwa", title_top_items:"Ebisiga kugurwa", title_payment_split:"Emitwarize y'okushasura", title_paid_features:"Ebicweka ebishasurwa", title_shop_details:"Ebiragiro by'edduuka", title_receipt_printer:"Ekyuma kya risiti", title_flutterwave:"Okushasura Flutterwave", title_feedback:"Ebiteekateeko", title_account:"Akaunti", title_data:"Data", btn_log_expense:"Handiika okushasura", btn_connect_printer:"Teraniisa ekyuma kya Bluetooth" },
+  sw: { nav_home:"Nyumbani", nav_history:"Historia", nav_tax:"Kodi", nav_stock:"Bidhaa", nav_reports:"Ripoti", nav_settings:"Mipangilio",
+    lbl_today_sales:"Mauzo ya leo", lbl_transactions:"Miamala", btn_record_sale:"Rekodi mauzo", btn_print_last:"Chapisha risiti ya mwisho",
+    title_recent_sales:"Mauzo ya hivi karibuni", btn_add_stock:"Ongeza bidhaa", title_current_stock:"Bidhaa zilizopo", title_business_report:"Ripoti ya biashara",
+    btn_export_pdf:"Hamisha ripoti kama PDF", title_log_expense:"Andika gharama", title_recent_expenses:"Gharama za hivi karibuni", btn_logout:"Toka", title_all_sales:"Mauzo yote", title_tax_summary:"Muhtasari wa kodi", title_add_product:"Ongeza bidhaa", title_sales_trend:"Mwenendo wa mauzo", title_top_items:"Bidhaa zinazouzwa zaidi", title_payment_split:"Mgawanyo wa malipo", title_paid_features:"Vipengele vya kulipwa", title_shop_details:"Maelezo ya duka", title_receipt_printer:"Printa ya risiti", title_flutterwave:"Malipo ya Flutterwave", title_feedback:"Maoni", title_account:"Akaunti", title_data:"Data", btn_log_expense:"Andika gharama", btn_connect_printer:"Unganisha printa ya Bluetooth" },
+  fr: { nav_home:"Accueil", nav_history:"Historique", nav_tax:"Taxe", nav_stock:"Stock", nav_reports:"Rapports", nav_settings:"Paramètres",
+    lbl_today_sales:"Ventes du jour", lbl_transactions:"Transactions", btn_record_sale:"Enregistrer la vente", btn_print_last:"Imprimer le dernier reçu",
+    title_recent_sales:"Ventes récentes", btn_add_stock:"Ajouter au stock", title_current_stock:"Stock actuel", title_business_report:"Rapport d'activité",
+    btn_export_pdf:"Exporter le rapport en PDF", title_log_expense:"Enregistrer une dépense", title_recent_expenses:"Dépenses récentes", btn_logout:"Déconnexion", title_all_sales:"Toutes les ventes", title_tax_summary:"Résumé des taxes", title_add_product:"Ajouter un produit", title_sales_trend:"Tendance des ventes", title_top_items:"Meilleures ventes", title_payment_split:"Répartition des paiements", title_paid_features:"Fonctionnalités payantes", title_shop_details:"Détails de la boutique", title_receipt_printer:"Imprimante de reçus", title_flutterwave:"Paiements Flutterwave", title_feedback:"Commentaires", title_account:"Compte", title_data:"Données", btn_log_expense:"Enregistrer une dépense", btn_connect_printer:"Connecter une imprimante Bluetooth" },
+  ar: { nav_home:"الرئيسية", nav_history:"السجل", nav_tax:"الضريبة", nav_stock:"المخزون", nav_reports:"التقارير", nav_settings:"الإعدادات",
+    lbl_today_sales:"مبيعات اليوم", lbl_transactions:"المعاملات", btn_record_sale:"تسجيل عملية بيع", btn_print_last:"طباعة آخر إيصال",
+    title_recent_sales:"المبيعات الأخيرة", btn_add_stock:"إضافة للمخزون", title_current_stock:"المخزون الحالي", title_business_report:"تقرير الأعمال",
+    btn_export_pdf:"تصدير التقرير كملف PDF", title_log_expense:"تسجيل مصروف", title_recent_expenses:"المصاريف الأخيرة", btn_logout:"تسجيل الخروج", title_all_sales:"جميع المبيعات", title_tax_summary:"ملخص الضريبة", title_add_product:"إضافة منتج", title_sales_trend:"اتجاه المبيعات", title_top_items:"الأكثر مبيعًا", title_payment_split:"توزيع طرق الدفع", title_paid_features:"الميزات المدفوعة", title_shop_details:"تفاصيل المتجر", title_receipt_printer:"طابعة الإيصالات", title_flutterwave:"مدفوعات Flutterwave", title_feedback:"التعليقات", title_account:"الحساب", title_data:"البيانات", btn_log_expense:"تسجيل مصروف", btn_connect_printer:"توصيل طابعة بلوتوث" },
+  pt: { nav_home:"Início", nav_history:"Histórico", nav_tax:"Imposto", nav_stock:"Estoque", nav_reports:"Relatórios", nav_settings:"Configurações",
+    lbl_today_sales:"Vendas de hoje", lbl_transactions:"Transações", btn_record_sale:"Registrar venda", btn_print_last:"Imprimir último recibo",
+    title_recent_sales:"Vendas recentes", btn_add_stock:"Adicionar ao estoque", title_current_stock:"Estoque atual", title_business_report:"Relatório do negócio",
+    btn_export_pdf:"Exportar relatório em PDF", title_log_expense:"Registrar despesa", title_recent_expenses:"Despesas recentes", btn_logout:"Sair", title_all_sales:"Todas as vendas", title_tax_summary:"Resumo de impostos", title_add_product:"Adicionar produto", title_sales_trend:"Tendência de vendas", title_top_items:"Mais vendidos", title_payment_split:"Divisão de pagamentos", title_paid_features:"Recursos pagos", title_shop_details:"Detalhes da loja", title_receipt_printer:"Impressora de recibos", title_flutterwave:"Pagamentos Flutterwave", title_feedback:"Comentários", title_account:"Conta", title_data:"Dados", btn_log_expense:"Registrar despesa", btn_connect_printer:"Conectar impressora Bluetooth" }
+};
+let currentLang = 'en';
+
+function applyLanguage(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const key = el.getAttribute('data-i18n');
+    if(TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key]){
+      el.textContent = TRANSLATIONS[currentLang][key];
+    }
+  });
+}
+
+async function setLanguage(lang){
+  currentLang = lang;
+  await kasoStore.set('kaso_lang', lang);
+  applyLanguage();
+}
+
+async function loadLanguage(){
+  try{
+    const r = await kasoStore.get('kaso_lang');
+    if(r) currentLang = r.value;
+    const sel = document.getElementById('languageSelect');
+    if(sel) sel.value = currentLang;
+    applyLanguage();
+  }catch(e){}
+}
+
+/* ---------- AUTH (real accounts, backed by Supabase) ---------- */
+function switchAuthTab(tab){
+  document.getElementById('tabSignup').classList.toggle('active', tab==='signup');
+  document.getElementById('tabLogin').classList.toggle('active', tab==='login');
+  document.getElementById('signupForm').style.display = tab==='signup' ? 'block' : 'none';
+  document.getElementById('loginForm').style.display = tab==='login' ? 'block' : 'none';
+}
+
+async function handleSignup(){
+  const shop = document.getElementById('suShopName').value.trim();
+  const phone = document.getElementById('suPhone').value.trim();
+  const pin = document.getElementById('suPin').value.trim();
+  const err = document.getElementById('suError');
+  if(!shop || !phone || pin.length !== 4){
+    err.textContent = "Fill in all fields — PIN must be 4 digits"; return;
+  }
+
+  const { data: existing } = await sb.from('shops').select('id').eq('phone', phone).maybeSingle();
+  if(existing){
+    err.textContent = "An account with this phone number already exists"; return;
+  }
+
+  const { data: newShop, error } = await sb.from('shops')
+    .insert({ name: shop, phone, pin, plan: 'free' })
+    .select().single();
+
+  if(error){
+    err.textContent = "Couldn't create account — check your connection and try again";
+    console.error(error);
+    return;
+  }
+
+  currentShopId = newShop.id;
+  shopName = shop;
+  await kasoStore.set('kaso_session', JSON.stringify({phone, shopId: newShop.id}));
+  await kasoStore.set(shopKey('kaso_shop'), JSON.stringify({name:shopName, location:''}));
+  enterApp();
+}
+
+async function handleLogin(){
+  const phone = document.getElementById('liPhone').value.trim();
+  const pin = document.getElementById('liPin').value.trim();
+  const err = document.getElementById('liError');
+
+  const { data: user, error } = await sb.from('shops')
+    .select('*').eq('phone', phone).eq('pin', pin).maybeSingle();
+
+  if(error){
+    err.textContent = "Couldn't reach the server — check your connection"; return;
+  }
+  if(!user){
+    err.textContent = "Incorrect phone number or PIN"; return;
+  }
+
+  currentShopId = user.id;
+  shopName = user.name;
+  await kasoStore.set('kaso_session', JSON.stringify({phone, shopId: user.id}));
+  await kasoStore.set(shopKey('kaso_shop'), JSON.stringify({name:user.name, location: user.location || ''}));
+  enterApp();
+}
+
+function enterApp(){
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'block';
+  loadData();
+}
+
+/* ---------- FEEDBACK ---------- */
+let selectedRating = 0;
+function setRating(n){
+  selectedRating = n;
+  document.querySelectorAll('#ratingStars span').forEach(el=>{
+    el.textContent = parseInt(el.dataset.star) <= n ? '★' : '☆';
+    el.style.color = parseInt(el.dataset.star) <= n ? 'var(--coral)' : 'var(--ink-soft)';
+  });
+}
+async function submitFeedback(){
+  const message = document.getElementById('feedbackMessage').value.trim();
+  if(selectedRating === 0 && !message){
+    showToast("Add a rating or a comment first");
+    return;
+  }
+  try{
+    await sb.from('feedback').insert({
+      shop_id: currentShopId,
+      rating: selectedRating || null,
+      message: message || null
+    });
+    showToast("Thanks for the feedback!");
+    document.getElementById('feedbackMessage').value = '';
+    setRating(0);
+  }catch(e){
+    showToast("Couldn't send — check your connection");
+    console.error(e);
+  }
+}
+
+async function handleLogout(){
+  if(!confirm("Log out of this account?")){
+    return;
+  }
+  localStorage.removeItem('kaso_session');
+  currentShopId = null;
+  sales = [];
+  inventory = [];
+  expenses = [];
+  shopName = "Your Shop";
+  shopLocation = "";
+  isUnlocked = false;
+  document.getElementById('mainApp').style.display = 'none';
+  document.getElementById('authScreen').style.display = 'flex';
+  document.getElementById('liPhone').value = '';
+  document.getElementById('liPin').value = '';
+  document.getElementById('suShopName').value = '';
+  document.getElementById('suPhone').value = '';
+  document.getElementById('suPin').value = '';
+}
+
+async function checkSession(){
+  try{
+    const r = await kasoStore.get('kaso_session');
+    if(r){
+      const session = JSON.parse(r.value);
+      currentShopId = session.shopId;
+      enterApp();
+      return;
+    }
+  }catch(e){}
+  document.getElementById('authScreen').style.display = 'flex';
+}
+
+
+async function loadSales(){
+  if(!currentShopId){ sales = []; return; }
+  try{
+    const { data: salesData, error } = await sb.from('sales').select('*').eq('shop_id', currentShopId).order('created_at', {ascending:false});
+    if(error) throw error;
+    sales = (salesData || []).map(s => ({
+      id: s.id, name: s.item_name, qty: s.qty, price: s.price,
+      subtotal: s.price * s.qty, vat: s.vat, total: s.total,
+      vatApplied: s.vat > 0, paidFw: s.paid_fw, timestamp: s.created_at
+    }));
+    await kasoStore.set(shopKey('kaso_sales'), JSON.stringify(sales));
+  }catch(e){
+    console.error("Couldn't reach database, using offline cache:", e);
+    try{ const r = await kasoStore.get(shopKey('kaso_sales')); sales = r ? JSON.parse(r.value) : []; }catch(e2){ sales = []; }
+  }
+}
+
+async function loadInventory(){
+  if(!currentShopId){ inventory = []; return; }
+  try{
+    const { data: invData, error } = await sb.from('inventory').select('*').eq('shop_id', currentShopId);
+    if(error) throw error;
+    inventory = (invData || []).map(i => ({ id: i.id, name: i.name, barcode: i.barcode, stock: i.stock, cost: i.cost, price: i.price, unit: i.unit || 'pcs' }));
+    await kasoStore.set(shopKey('kaso_inventory'), JSON.stringify(inventory));
+  }catch(e){
+    console.error("Couldn't reach database, using offline cache:", e);
+    try{ const ri = await kasoStore.get(shopKey('kaso_inventory')); inventory = ri ? JSON.parse(ri.value) : []; }catch(e2){ inventory = []; }
+  }
+}
+
+async function loadShopDetails(){
+  try{
+    const r2 = await kasoStore.get(shopKey('kaso_shop'));
+    if(r2){
+      const shop = JSON.parse(r2.value);
+      shopName = shop.name || "Your Shop";
+      shopLocation = shop.location || "";
+      document.getElementById('shopName').value = shopName;
+      document.getElementById('shopLocation').value = shopLocation;
+    }
+  }catch(e){}
+}
+
+async function loadData(){
+  // Fire every data request at once instead of waiting for each one in turn —
+  // this alone should make login noticeably faster, especially on slower connections.
+  await Promise.all([
+    loadSales(),
+    loadInventory(),
+    loadShopDetails(),
+    loadExpenses(),
+    loadDebts()
+  ]);
+
+  renderDebts();
+  render();
+  renderExpenses();
+  checkLowStock();
+  loadFwKey();
+  checkUnlockStatus();
+  initTrial();
+  loadCurrency();
+  loadVatRate();
+  loadLanguage();
+  checkAnnouncement();
+  updateSyncBadge();
+  flushSyncQueue();
+}
+
+async function saveInventory(){
+  try{ await kasoStore.set(shopKey('kaso_inventory'), JSON.stringify(inventory)); }catch(e){}
+}
+
+async function saveSales(){
+  try{ await kasoStore.set(shopKey('kaso_sales'), JSON.stringify(sales)); }catch(e){}
+}
+async function saveShopName(){
+  shopName = document.getElementById('shopName').value;
+  try{ await kasoStore.set(shopKey('kaso_shop'), JSON.stringify({name:shopName, location:shopLocation})); }catch(e){}
+}
+async function saveShopLocation(){
+  shopLocation = document.getElementById('shopLocation').value;
+  try{ await kasoStore.set(shopKey('kaso_shop'), JSON.stringify({name:shopName, location:shopLocation})); }catch(e){}
+}
+
+function toggleVat(){
+  vatOn = !vatOn;
+  document.getElementById('vatToggle').classList.toggle('on', vatOn);
+  updatePreview();
+}
+function toggleFw(){
+  if(!guardPaidAction('fw')) return;
+  fwOn = !fwOn;
+  document.getElementById('fwToggle').classList.toggle('on', fwOn);
+}
+
+function updatePreview(){
+  const qty = parseFloat(document.getElementById('qty').value) || 0;
+  const price = parseFloat(document.getElementById('price').value) || 0;
+  let total = qty * price;
+  if(vatOn) total = total * (1 + vatRate/100);
+  document.getElementById('totalPreview').textContent = total > 0 ? "Total: " + fmt(total) : "";
+}
+document.getElementById('qty').addEventListener('input', updatePreview);
+document.getElementById('price').addEventListener('input', updatePreview);
+
+/* ---------- CAMERA BARCODE SCANNING ---------- */
+async function openScan(target){
+  if(!guardPaidAction('scan')) return;
+  scanTarget = target;
+  const modal = document.getElementById('scanModal');
+  const hint = document.getElementById('scanHint');
+  modal.classList.add('open');
+  hint.textContent = "Requesting camera access…";
+
+  try{
+    scanStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+  }catch(e){
+    hint.textContent = "Camera permission was denied or unavailable. Check your browser's site settings, or type the barcode manually below.";
+    return;
+  }
+
+  const video = document.getElementById('scanVideo');
+  video.srcObject = scanStream;
+
+  if(!('BarcodeDetector' in window)){
+    hint.textContent = "Live auto-detect isn't supported on this browser yet — line up the barcode and type it in manually below.";
+    return;
+  }
+
+  hint.textContent = "Point the camera at a barcode";
+  const detector = new BarcodeDetector();
+  const tick = async () => {
+    if(!scanStream) return;
+    try{
+      const codes = await detector.detect(video);
+      if(codes.length > 0){
+        handleScanResult(codes[0].rawValue);
+        return;
+      }
+    }catch(e){}
+    requestAnimationFrame(tick);
+  };
+  video.onloadedmetadata = () => tick();
+}
+
+function handleScanResult(code){
+  closeScan();
+  if(scanTarget === 'sale'){
+    document.getElementById('barcode').value = code;
+    const match = inventory.find(i=>i.barcode === code);
+    if(match){
+      document.getElementById('itemName').value = match.name;
+      document.getElementById('price').value = match.price;
+      updatePreview();
+      showToast("Matched: " + match.name);
+    }else{
+      showToast("Barcode captured — no matching product in stock");
+    }
+  }else if(scanTarget === 'inventory'){
+    document.getElementById('invBarcode').value = code;
+    showToast("Barcode captured");
+  }
+}
+
+function closeScan(){
+  document.getElementById('scanModal').classList.remove('open');
+  if(scanStream){
+    scanStream.getTracks().forEach(t=>t.stop());
+    scanStream = null;
+  }
+}
+
+/* ---------- DEBTS (customer credit tracking) ---------- */
+let debts = [];
+async function loadDebts(){
+  if(currentShopId){
+    try{
+      const { data, error } = await sb.from('debts').select('*').eq('shop_id', currentShopId).order('created_at', {ascending:false});
+      if(error) throw error;
+      debts = (data || []).map(d => ({
+        id: d.id, name: d.customer_name, phone: d.customer_phone,
+        amount: d.amount, amountPaid: d.amount_paid, note: d.note, timestamp: d.created_at
+      }));
+      await kasoStore.set(shopKey('kaso_debts'), JSON.stringify(debts));
+      return;
+    }catch(e){ console.error("Couldn't reach database, using offline cache:", e); }
+  }
+  try{
+    const r = await kasoStore.get(shopKey('kaso_debts'));
+    debts = r ? JSON.parse(r.value) : [];
+  }catch(e){ debts = []; }
+}
+async function saveDebtsLocal(){
+  await kasoStore.set(shopKey('kaso_debts'), JSON.stringify(debts));
+}
+
+async function addDebt(){
+  const name = document.getElementById('debtName').value.trim();
+  const phone = document.getElementById('debtPhone').value.trim();
+  const itemName = document.getElementById('debtItemName').value.trim();
+  const itemQty = parseFloat(document.getElementById('debtItemQty').value) || 0;
+  const amount = parseFloat(document.getElementById('debtAmount').value) || 0;
+  const note = document.getElementById('debtNote').value.trim();
+  if(!name || amount <= 0){ showToast("Enter a customer name and amount"); return; }
+
+  // If an item was specified, deduct stock and record it as a credit sale
+  // so it correctly shows up in Reports and stock levels — not just as a bare debt.
+  if(itemName && itemQty > 0){
+    const invMatch = lookupInventoryByName(itemName);
+    await finalizeSale({
+      name: itemName, barcode: invMatch ? invMatch.barcode : '', qty: itemQty,
+      price: amount / itemQty, subtotal: amount, vat: 0, total: amount,
+      vatApplied: false, paidFw: false, onCredit: true
+    });
+  }
+
+  let newDebt = {id:Date.now(), name, phone, amount, amountPaid:0, note, timestamp:new Date().toISOString()};
+  if(currentShopId){
+    try{
+      const { data, error } = await sb.from('debts').insert({shop_id: currentShopId, customer_name: name, customer_phone: phone, amount, note}).select().single();
+      if(error) throw error;
+      newDebt.id = data.id;
+      newDebt.timestamp = data.created_at;
+    }catch(e){
+      console.error("Offline or unreachable — debt queued for sync:", e);
+      await queueForSync({ type: 'debt_new', payload: { localId: newDebt.id, shop_id: currentShopId, customer_name: name, customer_phone: phone, amount, note } });
+    }
+  }
+  debts.unshift(newDebt);
+  await saveDebtsLocal();
+  document.getElementById('debtName').value = '';
+  document.getElementById('debtPhone').value = '';
+  document.getElementById('debtItemName').value = '';
+  document.getElementById('debtItemQty').value = '1';
+  document.getElementById('debtAmount').value = '';
+  document.getElementById('debtNote').value = '';
+  renderDebts();
+  showToast("Debt recorded");
+}
+
+async function recordDebtPayment(id){
+  const debt = debts.find(d=>d.id===id);
+  if(!debt) return;
+  const remaining = debt.amount - debt.amountPaid;
+  const input = prompt(`How much is being paid off this ${fmt(remaining)} debt?`, remaining);
+  if(input === null) return;
+  const payment = parseFloat(input);
+  if(!payment || payment <= 0) return;
+
+  debt.amountPaid = Math.min(debt.amount, debt.amountPaid + payment);
+  await saveDebtsLocal();
+  if(currentShopId){
+    try{
+      const { error } = await sb.from('debts').update({amount_paid: debt.amountPaid}).eq('id', id);
+      if(error) throw error;
+    }catch(e){
+      console.error("Offline or unreachable — payment queued for sync:", e);
+      await queueForSync({ type: 'debt_update', payload: { id, updates: {amount_paid: debt.amountPaid} } });
+    }
+  }
+  renderDebts();
+  showToast(debt.amountPaid >= debt.amount ? "Debt fully paid off ✓" : "Payment recorded");
+}
+
+function renderDebts(){
+  const list = document.getElementById('debtsList');
+  const empty = document.getElementById('debtsEmpty');
+  if(!list) return;
+  const outstanding = debts.filter(d => d.amountPaid < d.amount);
+  list.innerHTML = '';
+  if(outstanding.length === 0){
+    empty.style.display = 'block';
+  }else{
+    empty.style.display = 'none';
+    outstanding.forEach(d=>{
+      const remaining = d.amount - d.amountPaid;
+      const div = document.createElement('div');
+      div.className = 'sale-item';
+      div.innerHTML = `
+        <div class="info">
+          <div class="name">${d.name}${d.phone ? ' · '+d.phone : ''}</div>
+          <div class="meta">${d.note || ''} ${d.amountPaid > 0 ? `· ${fmt(d.amountPaid)} paid` : ''}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="amount">${fmt(remaining)}</div>
+          <button class="btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="recordDebtPayment(${d.id})">Pay</button>
+        </div>
+      `;
+      list.appendChild(div);
+    });
+  }
+  const total = outstanding.reduce((a,d)=>a+(d.amount-d.amountPaid),0);
+  document.getElementById('debtsTotal').textContent = fmt(total);
+}
+
+/* ---------- EXPENSES ---------- */
+let expenses = [];
+async function loadExpenses(){
+  if(currentShopId){
+    try{
+      const { data, error } = await sb.from('expenses').select('*').eq('shop_id', currentShopId).order('created_at', {ascending:false});
+      if(error) throw error;
+      expenses = (data || []).map(e => ({id: e.id, name: e.description, amount: e.amount, timestamp: e.created_at}));
+      await kasoStore.set(shopKey('kaso_expenses'), JSON.stringify(expenses));
+      return;
+    }catch(e){
+      console.error("Couldn't reach database, using offline cache:", e);
+    }
+  }
+  try{
+    const r = await kasoStore.get(shopKey('kaso_expenses'));
+    expenses = r ? JSON.parse(r.value) : [];
+  }catch(e){ expenses = []; }
+}
+async function saveExpenses(){
+  await kasoStore.set(shopKey('kaso_expenses'), JSON.stringify(expenses));
+}
+async function addExpense(){
+  const name = document.getElementById('expName').value.trim();
+  const amount = parseFloat(document.getElementById('expAmount').value) || 0;
+  if(!name || amount <= 0){ showToast("Enter a description and amount"); return; }
+
+  let newExpense = {id:Date.now(), name, amount, timestamp:new Date().toISOString()};
+  if(currentShopId){
+    try{
+      const { data, error } = await sb.from('expenses').insert({shop_id: currentShopId, description: name, amount}).select().single();
+      if(error) throw error;
+      newExpense.id = data.id;
+      newExpense.timestamp = data.created_at;
+    }catch(e){
+      console.error("Offline or unreachable — expense queued for sync:", e);
+      await queueForSync({ type: 'expense', payload: { shop_id: currentShopId, description: name, amount } });
+    }
+  }
+  expenses.unshift(newExpense);
+  await saveExpenses();
+  document.getElementById('expName').value = '';
+  document.getElementById('expAmount').value = '';
+  renderExpenses();
+  showToast("Expense logged");
+}
+function renderExpenses(){
+  const list = document.getElementById('expList');
+  const empty = document.getElementById('expEmpty');
+  list.innerHTML = '';
+  if(expenses.length === 0){
+    empty.style.display = 'block';
+  }else{
+    empty.style.display = 'none';
+    expenses.slice(0,20).forEach(e=>{
+      const d = new Date(e.timestamp);
+      const div = document.createElement('div');
+      div.className = 'sale-item';
+      div.innerHTML = `<div class="info"><div class="name">${e.name}</div><div class="meta">${d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</div></div><div class="amount">${fmt(e.amount)}</div>`;
+      list.appendChild(div);
+    });
+  }
+  const monthTotal = expenses.filter(e=>{
+    const d = new Date(e.timestamp), now = new Date();
+    return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+  }).reduce((a,e)=>a+e.amount,0);
+  document.getElementById('expMonthTotal').textContent = fmt(monthTotal);
+}
+
+/* ---------- FLUTTERWAVE ---------- */
+let fwPublicKey = '';
+async function saveFwKey(){
+  fwPublicKey = document.getElementById('fwPublicKey').value.trim();
+  await kasoStore.set(shopKey('kaso_fwkey'), fwPublicKey);
+}
+async function loadFwKey(){
+  try{
+    const r = await kasoStore.get(shopKey('kaso_fwkey'));
+    if(r){ fwPublicKey = r.value; document.getElementById('fwPublicKey').value = fwPublicKey; }
+  }catch(e){}
+}
+function testFwPayment(){
+  if(!fwPublicKey){ showToast("Enter your Flutterwave public key first"); return; }
+  if(typeof FlutterwaveCheckout !== 'function'){ showToast("Payment widget failed to load — check your connection"); return; }
+  FlutterwaveCheckout({
+    public_key: fwPublicKey,
+    tx_ref: "kaso-test-" + Date.now(),
+    amount: 1000,
+    currency: "UGX",
+    customer: { email: "test@kaso.app", name: shopName || "Kaso test" },
+    customizations: { title: shopName || "Kaso", description: "Test payment" },
+    callback: function(data){
+      showToast("Payment response received — check Flutterwave dashboard");
+    },
+    onclose: function(){}
+  });
+}
+
+/* ---------- REPORTS ---------- */
+let reportRange = 'day';
+function setReportRange(range){
+  reportRange = range;
+  ['repDay','repWeek','repMonth'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  document.getElementById('rep' + range[0].toUpperCase()+range.slice(1)).classList.add('active');
+  renderReport();
+}
+
+function inRange(iso, range){
+  const d = new Date(iso), now = new Date();
+  if(range === 'day') return d.toDateString() === now.toDateString();
+  if(range === 'week'){
+    const weekAgo = new Date(now); weekAgo.setDate(now.getDate()-7);
+    return d >= weekAgo && d <= now;
+  }
+  if(range === 'month') return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+}
+
+// Checks if a date falls in the PREVIOUS period (yesterday / last week / last month)
+// so we can compare "now" against "before" — this is what makes each range feel distinct.
+function inPreviousRange(iso, range){
+  const d = new Date(iso), now = new Date();
+  if(range === 'day'){
+    const yesterday = new Date(now); yesterday.setDate(now.getDate()-1);
+    return d.toDateString() === yesterday.toDateString();
+  }
+  if(range === 'week'){
+    const twoWeeksAgo = new Date(now); twoWeeksAgo.setDate(now.getDate()-14);
+    const weekAgo = new Date(now); weekAgo.setDate(now.getDate()-7);
+    return d >= twoWeeksAgo && d < weekAgo;
+  }
+  if(range === 'month'){
+    const lastMonth = new Date(now.getFullYear(), now.getMonth()-1, 1);
+    return d.getMonth() === lastMonth.getMonth() && d.getFullYear() === lastMonth.getFullYear();
+  }
+}
+
+function renderComparison(currentTotal, range){
+  const previousTotal = sales.filter(s=>inPreviousRange(s.timestamp, range)).reduce((a,s)=>a+s.total,0);
+  const el = document.getElementById('repComparisonText');
+  if(!el) return;
+
+  const labels = { day: 'yesterday', week: 'last week', month: 'last month' };
+  if(previousTotal === 0){
+    el.textContent = currentTotal > 0 ? `First period with sales — nothing to compare to ${labels[range]} yet` : `No sales yet this period`;
+    el.style.color = 'var(--ink-soft)';
+    return;
+  }
+  const change = ((currentTotal - previousTotal) / previousTotal) * 100;
+  const arrow = change >= 0 ? '↑' : '↓';
+  const color = change >= 0 ? 'var(--teal-dark)' : 'var(--coral)';
+  el.textContent = `${arrow} ${Math.abs(change).toFixed(0)}% vs ${labels[range]} (${fmt(previousTotal)})`;
+  el.style.color = color;
+}
+
+function renderReport(){
+  const filtered = sales.filter(s=>inRange(s.timestamp, reportRange));
+  const total = filtered.reduce((a,s)=>a+s.total,0);
+  const vat = filtered.reduce((a,s)=>a+s.vat,0);
+  const cash = filtered.filter(s=>!s.paidFw).reduce((a,s)=>a+s.total,0);
+  const fw = filtered.filter(s=>s.paidFw).reduce((a,s)=>a+s.total,0);
+
+  renderComparison(total, reportRange);
+
+  document.getElementById('repTotal').textContent = fmt(total);
+  document.getElementById('repCount').textContent = filtered.length;
+  document.getElementById('repAvg').textContent = fmt(filtered.length ? total/filtered.length : 0);
+  document.getElementById('repVat').textContent = fmt(vat);
+  document.getElementById('repCash').textContent = fmt(cash);
+  document.getElementById('repFw').textContent = fmt(fw);
+
+  const pie = document.getElementById('paymentPie');
+  const paymentTotal = cash + fw;
+  if(pie){
+    if(paymentTotal === 0){
+      pie.style.background = 'var(--border, #DDE5E3)';
+    }else{
+      const cashDeg = (cash / paymentTotal) * 360;
+      pie.style.background = `conic-gradient(var(--teal) 0deg ${cashDeg}deg, #D85A30 ${cashDeg}deg 360deg)`;
+    }
+  }
+
+  let profit = 0;
+  filtered.forEach(s=>{
+    const invItem = inventory.find(i=>i.name.toLowerCase() === s.name.toLowerCase());
+    const costEach = invItem && invItem.cost ? invItem.cost : 0;
+    profit += (s.price - costEach) * s.qty;
+  });
+  document.getElementById('repProfit').textContent = fmt(profit);
+
+  const periodExpenses = expenses.filter(e=>inRange(e.timestamp, reportRange)).reduce((a,e)=>a+e.amount,0);
+  document.getElementById('repExpenses').textContent = fmt(periodExpenses);
+  document.getElementById('repNetProfit').textContent = fmt(profit - periodExpenses);
+
+  const byItem = {};
+  filtered.forEach(s=>{
+    byItem[s.name] = byItem[s.name] || {qty:0, total:0};
+    byItem[s.name].qty += s.qty;
+    byItem[s.name].total += s.total;
+  });
+  const topList = document.getElementById('repTopList');
+  const topEmpty = document.getElementById('repTopEmpty');
+  topList.innerHTML = '';
+  const items = Object.entries(byItem).sort((a,b)=>b[1].total - a[1].total).slice(0,8);
+  if(items.length === 0){
+    topEmpty.style.display = 'block';
+  }else{
+    topEmpty.style.display = 'none';
+    items.forEach(([name, data])=>{
+      const div = document.createElement('div');
+      div.className = 'sale-item';
+      div.innerHTML = `<div class="info"><div class="name">${name}</div><div class="meta">${data.qty} sold</div></div><div class="amount">${fmt(data.total)}</div>`;
+      topList.appendChild(div);
+    });
+  }
+  renderSalesChart();
+}
+
+function exportReportPDF(){
+  const filtered = sales.filter(s=>inRange(s.timestamp, reportRange));
+  const total = filtered.reduce((a,s)=>a+s.total,0);
+  const vat = filtered.reduce((a,s)=>a+s.vat,0);
+  const cash = filtered.filter(s=>!s.paidFw).reduce((a,s)=>a+s.total,0);
+  const fw = filtered.filter(s=>s.paidFw).reduce((a,s)=>a+s.total,0);
+  let profit = 0;
+  filtered.forEach(s=>{
+    const invItem = inventory.find(i=>i.name.toLowerCase() === s.name.toLowerCase());
+    profit += (s.price - (invItem?.cost || 0)) * s.qty;
+  });
+  const periodExpensesForPDF = expenses.filter(e=>inRange(e.timestamp, reportRange)).reduce((a,e)=>a+e.amount,0);
+  const byItem = {};
+  filtered.forEach(s=>{
+    byItem[s.name] = byItem[s.name] || {qty:0, total:0};
+    byItem[s.name].qty += s.qty;
+    byItem[s.name].total += s.total;
+  });
+  const topItems = Object.entries(byItem).sort((a,b)=>b[1].total - a[1].total);
+  const rangeLabel = reportRange === 'day' ? 'Today' : reportRange === 'week' ? 'This Week' : 'This Month';
+
+  const area = document.getElementById('printArea');
+  area.innerHTML = `
+    <div style="font-family:Arial,sans-serif;width:100%;max-width:600px;color:#1B2321;">
+      <div style="text-align:center;margin-bottom:20px;">
+        <h1 style="margin:0;font-size:22px;">${shopName}</h1>
+        <div style="color:#5B6764;font-size:13px;">${shopLocation}</div>
+        <h2 style="margin:14px 0 2px;font-size:16px;">Business Report — ${rangeLabel}</h2>
+        <div style="color:#5B6764;font-size:12px;">Generated ${new Date().toLocaleString()}</div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+        <tr style="background:#E4F2F1;"><td style="padding:8px;font-weight:bold;">Total Sales</td><td style="padding:8px;text-align:right;">${fmt(total)}</td></tr>
+        <tr><td style="padding:8px;">Transactions</td><td style="padding:8px;text-align:right;">${filtered.length}</td></tr>
+        <tr style="background:#f7f9f8;"><td style="padding:8px;">Average Sale</td><td style="padding:8px;text-align:right;">${fmt(filtered.length ? total/filtered.length : 0)}</td></tr>
+        <tr><td style="padding:8px;">VAT Collected</td><td style="padding:8px;text-align:right;">${fmt(vat)}</td></tr>
+        <tr style="background:#f7f9f8;"><td style="padding:8px;font-weight:bold;">Estimated Profit</td><td style="padding:8px;text-align:right;font-weight:bold;">${fmt(profit)}</td></tr>
+        <tr><td style="padding:8px;">Expenses</td><td style="padding:8px;text-align:right;">${fmt(periodExpensesForPDF)}</td></tr>
+        <tr style="background:#E4F2F1;border-top:2px solid #0F6E6A;"><td style="padding:8px;font-weight:bold;">Net Profit</td><td style="padding:8px;text-align:right;font-weight:bold;">${fmt(profit - periodExpensesForPDF)}</td></tr>
+        <tr><td style="padding:8px;">Cash Payments</td><td style="padding:8px;text-align:right;">${fmt(cash)}</td></tr>
+        <tr style="background:#f7f9f8;"><td style="padding:8px;">Flutterwave Payments</td><td style="padding:8px;text-align:right;">${fmt(fw)}</td></tr>
+      </table>
+      <h3 style="font-size:14px;border-bottom:1px solid #DDE5E3;padding-bottom:6px;">Top-Selling Items</h3>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr style="font-size:12px;color:#5B6764;"><td style="padding:6px 8px;">Item</td><td style="padding:6px 8px;text-align:center;">Qty Sold</td><td style="padding:6px 8px;text-align:right;">Revenue</td></tr>
+        ${topItems.map(([name,d],i)=>`<tr style="${i%2?'background:#f7f9f8;':''}"><td style="padding:6px 8px;">${name}</td><td style="padding:6px 8px;text-align:center;">${d.qty}</td><td style="padding:6px 8px;text-align:right;">${fmt(d.total)}</td></tr>`).join('')}
+      </table>
+      <div style="text-align:center;margin-top:24px;color:#5B6764;font-size:11px;">Generated by Kaso</div>
+    </div>
+  `;
+  window.print();
+}
+
+function renderSalesChart(){
+  const wrap = document.getElementById('salesChart');
+  if(!wrap) return;
+  const now = new Date();
+  const days = reportRange === 'month' ? 30 : 7;
+  const buckets = [];
+  for(let i = days-1; i >= 0; i--){
+    const d = new Date(now); d.setDate(now.getDate() - i);
+    const dayTotal = sales.filter(s=>new Date(s.timestamp).toDateString() === d.toDateString())
+                           .reduce((a,s)=>a+s.total,0);
+    buckets.push({label: d.toLocaleDateString('en-GB',{day:'numeric',month:'short'}).split(' ')[0], value: dayTotal});
+  }
+  const max = Math.max(...buckets.map(b=>b.value), 1);
+  wrap.innerHTML = '';
+  buckets.forEach(b=>{
+    const bar = document.createElement('div');
+    bar.className = 'chart-bar';
+    bar.style.height = Math.max(3, (b.value/max)*105) + 'px';
+    bar.title = fmt(b.value);
+    bar.innerHTML = `<span class="bar-label">${b.label}</span>`;
+    wrap.appendChild(bar);
+  });
+}
+
+/* ---------- INSTALL PROMPT (Android/Chrome) ---------- */
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const btn = document.getElementById('installBtn');
+  if(btn) btn.classList.add('show');
+});
+function triggerInstall(){
+  if(!deferredInstallPrompt){
+    showToast("Use your browser menu → Add to Home Screen");
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.then(()=>{
+    deferredInstallPrompt = null;
+    document.getElementById('installBtn').classList.remove('show');
+  });
+}
+window.addEventListener('appinstalled', () => {
+  const btn = document.getElementById('installBtn');
+  if(btn) btn.classList.remove('show');
+});
+
+/* ---------- ANNOUNCEMENTS (sent from Supabase, no code changes needed) ---------- */
+async function checkAnnouncement(){
+  try{
+    const { data } = await sb.from('announcements')
+      .select('message, link_url, image_url')
+      .eq('active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const banner = document.getElementById('announcementBanner');
+    if(data && data.message){
+      const imageHtml = data.image_url
+        ? `<img src="${data.image_url}" alt="" style="width:100%;display:block;max-height:160px;object-fit:cover;">`
+        : '';
+      banner.innerHTML = `
+        ${imageHtml}
+        <div style="padding:12px 14px;font-size:13px;font-weight:600;color:var(--coral);">📢 ${data.message}</div>
+      `;
+      banner.style.display = 'block';
+      if(data.link_url){
+        banner.style.cursor = 'pointer';
+        banner.onclick = () => window.open(data.link_url, '_blank');
+      }else{
+        banner.style.cursor = 'default';
+        banner.onclick = null;
+      }
+    }else{
+      banner.style.display = 'none';
+    }
+  }catch(e){
+    console.error("Couldn't load announcement:", e);
+  }
+}
+
+/* ---------- 30-DAY TRIAL ---------- */
+const TRIAL_DAYS = 30;
+let trialStartDate = null;
+
+async function initTrial(){
+  try{
+    let r = await kasoStore.get(shopKey('kaso_trial_start'));
+    if(!r){
+      trialStartDate = new Date().toISOString();
+      await kasoStore.set(shopKey('kaso_trial_start'), trialStartDate);
+    }else{
+      trialStartDate = r.value;
+    }
+  }catch(e){}
+  updateTrialBanner();
+}
+
+function trialDaysLeft(){
+  if(!trialStartDate) return TRIAL_DAYS;
+  const start = new Date(trialStartDate);
+  const now = new Date();
+  const elapsed = Math.floor((now - start) / (1000*60*60*24));
+  return Math.max(0, TRIAL_DAYS - elapsed);
+}
+
+function updateTrialBanner(){
+  const banner = document.getElementById('trialBanner');
+  if(isUnlocked){
+    banner.style.display = 'none';
+    return;
+  }
+  const daysLeft = trialDaysLeft();
+  banner.style.display = 'block';
+  if(daysLeft > 0){
+    banner.classList.remove('expired');
+    banner.textContent = `Free trial — ${daysLeft} day${daysLeft===1?'':'s'} left for paid features`;
+  }else{
+    banner.classList.add('expired');
+    banner.textContent = `Trial ended — unlock paid features in Settings`;
+  }
+}
+
+/* ---------- PAID FEATURE UNLOCK ---------- */
+const VALID_CODES = ["KASO-2A8SPM","KASO-3XLO3V","KASO-5YUAWY","KASO-65LYQN","KASO-6YKO88","KASO-7H55ZO","KASO-8PPP04","KASO-8VDTAH","KASO-9B4II3","KASO-A1NS0W","KASO-AGJ8HA","KASO-C4LQLY","KASO-CWQ0UK","KASO-JX41FZ","KASO-KLKVMW","KASO-OBCNNV","KASO-OL5NU9","KASO-PDIPM4","KASO-QHK24Z","KASO-QT5VFB","KASO-QVI9FP","KASO-RSPLGT","KASO-SL4KRC","KASO-TGEYSU","KASO-TOVYNO","KASO-UJHULM","KASO-VG8JU0","KASO-YDPMCD","KASO-YT5YGH","KASO-ZLP91A"];
+let isUnlocked = false;
+
+async function checkUnlockStatus(){
+  if(currentShopId){
+    try{
+      const { data } = await sb.from('shops').select('plan, plan_expires_at').eq('id', currentShopId).single();
+      if(data){
+        const stillActive = data.plan !== 'free' && data.plan_expires_at && new Date(data.plan_expires_at) > new Date();
+        isUnlocked = stillActive;
+        await kasoStore.set(shopKey('kaso_unlocked'), isUnlocked ? 'true' : 'false');
+        applyLockState();
+        return;
+      }
+    }catch(e){ console.error("Couldn't reach database, using cached status:", e); }
+  }
+  try{
+    const r = await kasoStore.get(shopKey('kaso_unlocked'));
+    isUnlocked = r && r.value === 'true';
+  }catch(e){ isUnlocked = false; }
+  applyLockState();
+}
+
+async function tryUnlock(){
+  const input = document.getElementById('unlockCodeInput').value.trim().toUpperCase();
+  const err = document.getElementById('unlockError');
+
+  const { data: codeRow, error: codeErr } = await sb.from('unlock_codes')
+    .select('*').eq('code', input).maybeSingle();
+
+  if(codeErr){
+    err.textContent = "Couldn't verify code — check your connection"; return;
+  }
+  if(!codeRow){
+    err.textContent = "That code isn't valid — check and try again."; return;
+  }
+  if(codeRow.used){
+    err.textContent = "This code has already been used."; return;
+  }
+
+  isUnlocked = true;
+  await kasoStore.set(shopKey('kaso_unlocked'), 'true');
+
+  if(currentShopId){
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+    await sb.from('shops').update({ plan: 'basic', plan_expires_at: expiresAt.toISOString() }).eq('id', currentShopId);
+    await sb.from('unlock_codes').update({ used: true, used_by_shop_id: currentShopId, used_at: new Date().toISOString() }).eq('code', input);
+  }
+
+  applyLockState();
+  showToast("Paid features unlocked!");
+}
+
+function applyLockState(){
+  const hasAccess = isUnlocked || trialDaysLeft() > 0;
+  document.getElementById('lockedState').style.display = isUnlocked ? 'none' : 'block';
+  document.getElementById('unlockedState').style.display = isUnlocked ? 'block' : 'none';
+
+  const scanButtons = document.querySelectorAll('.btn-scan');
+  scanButtons.forEach(b => b.classList.toggle('locked', !hasAccess));
+
+  const fwToggleRow = document.getElementById('fwToggle');
+  if(fwToggleRow) fwToggleRow.closest('.toggle-row').classList.toggle('locked', !hasAccess);
+
+  updateTrialBanner();
+}
+
+function guardPaidAction(actionName){
+  if(isUnlocked) return true;
+  if(trialDaysLeft() > 0) return true; // still within free trial
+  showToast("Your trial has ended — unlock in Settings to keep using this");
+  showScreen('settings');
+  return false;
+}
+
+/* ---------- LOW STOCK ALERTS ---------- */
+const LOW_STOCK_THRESHOLD = 5;
+let lowStockDismissedThisSession = false;
+
+function checkLowStock(force){
+  if(lowStockDismissedThisSession && !force) return;
+  const low = inventory.filter(i => i.stock <= LOW_STOCK_THRESHOLD);
+  if(low.length === 0) return;
+
+  const list = document.getElementById('lowStockList');
+  list.innerHTML = '';
+  low.forEach(item=>{
+    const row = document.createElement('div');
+    row.className = 'alert-row';
+    row.innerHTML = `<span class="name">${item.name}</span><span class="count">${item.stock} left</span>`;
+    list.appendChild(row);
+  });
+  document.getElementById('lowStockSub').textContent =
+    low.length === 1 ? "1 item is running low — restock soon." : `${low.length} items are running low — restock soon.`;
+  document.getElementById('lowStockOverlay').classList.add('open');
+}
+
+function dismissLowStock(){
+  lowStockDismissedThisSession = true;
+  document.getElementById('lowStockOverlay').classList.remove('open');
+}
+
+function goToStockFromAlert(){
+  dismissLowStock();
+  showScreen('stock');
+}
+
+async function addInventoryItem(){
+  const name = document.getElementById('invName').value.trim();
+  const barcode = document.getElementById('invBarcode').value.trim();
+  const qty = parseFloat(document.getElementById('invQty').value) || 0;
+  const cost = parseFloat(document.getElementById('invCost').value) || 0;
+  const price = parseFloat(document.getElementById('invPrice').value) || 0;
+  const unit = document.getElementById('invUnit').value;
+  if(!name){ showToast("Enter a product name"); return; }
+
+  const existing = inventory.find(i=>i.name.toLowerCase() === name.toLowerCase());
+  let syncedToServer = false;
+  let lastSyncError = '';
+  if(existing){
+    existing.stock += qty;
+    if(price > 0) existing.price = price;
+    if(cost > 0) existing.cost = cost;
+    if(barcode) existing.barcode = barcode;
+    existing.unit = unit;
+    if(currentShopId){
+      const updates = {stock: existing.stock, price: existing.price, cost: existing.cost, barcode: existing.barcode, unit: existing.unit};
+      try{
+        const { error } = await sb.from('inventory').update(updates).eq('id', existing.id);
+        if(error) throw error;
+        syncedToServer = true;
+      }catch(e){
+        lastSyncError = e.message || JSON.stringify(e);
+        console.error("Offline or unreachable — inventory update queued:", e);
+        await queueForSync({ type: 'inventory_update', payload: { id: existing.id, updates } });
+      }
+    }
+  }else{
+    const newItem = {id:Date.now(), name, barcode, stock:qty, price, cost, unit};
+    if(currentShopId){
+      try{
+        const { data, error } = await sb.from('inventory').insert({shop_id: currentShopId, name, barcode, stock: qty, price, cost, unit}).select().single();
+        if(error) throw error;
+        newItem.id = data.id;
+        syncedToServer = true;
+      }catch(e){
+        lastSyncError = e.message || JSON.stringify(e);
+        console.error("Offline or unreachable — new product queued for sync:", e);
+        await queueForSync({ type: 'inventory_new', payload: { localId: newItem.id, shop_id: currentShopId, name, barcode, stock: qty, price, cost, unit } });
+      }
+    }
+    inventory.unshift(newItem);
+  }
+  const debugSyncEl = document.getElementById('debugSyncStatus');
+  if(debugSyncEl){
+    debugSyncEl.textContent = syncedToServer
+      ? 'Saved to database ✓ at ' + new Date().toLocaleTimeString()
+      : 'FAILED: ' + lastSyncError + ' (at ' + new Date().toLocaleTimeString() + ')';
+  }
+  await saveInventory();
+  document.getElementById('invName').value = '';
+  document.getElementById('invBarcode').value = '';
+  document.getElementById('invQty').value = '';
+  document.getElementById('invCost').value = '';
+  document.getElementById('invPrice').value = '';
+  render();
+  showToast("Stock updated");
+}
+
+async function adjustStock(id, delta){
+  const item = inventory.find(i=>i.id === id);
+  if(!item) return;
+  item.stock = Math.max(0, item.stock + delta);
+  await saveInventory();
+  if(currentShopId){
+    try{
+      const { error } = await sb.from('inventory').update({stock: item.stock}).eq('id', id);
+      if(error) throw error;
+    }catch(e){
+      console.error("Offline or unreachable — stock adjustment queued:", e);
+      await queueForSync({ type: 'inventory_update', payload: { id, updates: {stock: item.stock} } });
+    }
+  }
+  render();
+  if(item.stock <= LOW_STOCK_THRESHOLD) checkLowStock(true);
+}
+
+async function deleteInventoryItem(id){
+  inventory = inventory.filter(i=>i.id !== id);
+  await saveInventory();
+  if(currentShopId){
+    try{ await sb.from('inventory').delete().eq('id', id); }
+    catch(e){ console.error("Couldn't sync deletion:", e); }
+  }
+  render();
+}
+
+function lookupInventoryByName(name){
+  return inventory.find(i=>i.name.toLowerCase() === name.trim().toLowerCase());
+}
+document.getElementById('itemName').addEventListener('input', function(){
+  const match = lookupInventoryByName(this.value);
+  const unitLabel = document.getElementById('qtyUnitLabel');
+  if(match && !document.getElementById('price').value){
+    document.getElementById('price').value = match.price;
+    document.getElementById('barcode').value = match.barcode || '';
+    updatePreview();
+  }
+  unitLabel.textContent = match ? `(${match.unit || 'pcs'})` : '';
+});
+
+// Hardware barcode scanners act like a keyboard — they type the code then press Enter.
+// This catches that Enter and looks up the product automatically, same as camera scanning.
+document.getElementById('barcode').addEventListener('keydown', function(e){
+  if(e.key === 'Enter'){
+    e.preventDefault();
+    const code = this.value.trim();
+    if(!code) return;
+    const match = inventory.find(i => i.barcode === code);
+    if(match){
+      document.getElementById('itemName').value = match.name;
+      document.getElementById('price').value = match.price;
+      updatePreview();
+      showToast("Matched: " + match.name);
+      document.getElementById('qty').focus();
+    }else{
+      showToast("Barcode captured — no matching product in stock");
+    }
+  }
+});
+
+/* Hardware barcode scanners (Bluetooth/USB) act as keyboards — they type
+   the code then send Enter. This catches that and auto-matches inventory,
+   same as a camera scan would. */
+document.getElementById('barcode').addEventListener('keydown', function(e){
+  if(e.key === 'Enter'){
+    e.preventDefault();
+    const code = this.value.trim();
+    if(!code) return;
+    const match = inventory.find(i => i.barcode === code);
+    if(match){
+      document.getElementById('itemName').value = match.name;
+      document.getElementById('price').value = match.price;
+      updatePreview();
+      showToast("Matched: " + match.name);
+    }else{
+      showToast("No product found for this barcode — add it in Stock first");
+    }
+  }
+});
+document.getElementById('invBarcode').addEventListener('keydown', function(e){
+  if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('invName').focus(); }
+});
+
+
+async function recordSale(){
+  const name = document.getElementById('itemName').value.trim();
+  const barcode = document.getElementById('barcode').value.trim();
+  const qty = parseFloat(document.getElementById('qty').value) || 0;
+  const price = parseFloat(document.getElementById('price').value) || 0;
+
+  if(!name){ showToast("Enter an item name"); return; }
+  if(qty <= 0 || price <= 0){ showToast("Enter quantity and price"); return; }
+  if(fwOn && !guardPaidAction('fw')) return;
+
+  let subtotal = qty * price;
+  let vat = vatOn ? subtotal * (vatRate/100) : 0;
+  let total = subtotal + vat;
+
+  const saleData = { name, barcode, qty, price, subtotal, vat, total, vatApplied: vatOn };
+
+  if(fwOn){
+    if(!fwPublicKey){ showToast("Add your Flutterwave public key in Settings first"); return; }
+    if(typeof FlutterwaveCheckout !== 'function'){ showToast("Payment widget failed to load — check your connection"); return; }
+
+    FlutterwaveCheckout({
+      public_key: fwPublicKey,
+      tx_ref: "kaso-sale-" + Date.now(),
+      amount: total,
+      currency: "UGX",
+      customer: { email: "customer@kaso.app", name: "Customer" },
+      customizations: { title: shopName || "Kaso", description: name },
+      callback: async function(response){
+        if(response.status === "successful" || response.status === "completed"){
+          await finalizeSale({ ...saleData, paidFw: true });
+          showToast("Payment received — sale recorded");
+        }else{
+          showToast("Payment did not complete — sale not recorded");
+        }
+      },
+      onclose: function(){
+        // Customer closed the popup without paying — nothing is recorded, matching a real till.
+      }
+    });
+    return; // wait for the callback above instead of recording immediately
+  }
+
+  await finalizeSale({ ...saleData, paidFw: false });
+}
+
+/* ---------- OFFLINE SYNC QUEUE ---------- */
+async function queueForSync(action){
+  let queue = [];
+  try{
+    const r = await kasoStore.get(shopKey('kaso_sync_queue'));
+    queue = r ? JSON.parse(r.value) : [];
+  }catch(e){}
+  queue.push({...action, queuedAt: new Date().toISOString()});
+  await kasoStore.set(shopKey('kaso_sync_queue'), JSON.stringify(queue));
+  updateSyncBadge();
+}
+
+async function getSyncQueueCount(){
+  try{
+    const r = await kasoStore.get(shopKey('kaso_sync_queue'));
+    return r ? JSON.parse(r.value).length : 0;
+  }catch(e){ return 0; }
+}
+
+async function updateSyncBadge(){
+  const count = await getSyncQueueCount();
+  const badge = document.getElementById('syncBadge');
+  if(!badge) return;
+  if(count > 0){
+    badge.style.display = 'block';
+    badge.textContent = `📡 ${count} sale${count===1?'':'s'} waiting to sync`;
+  }else{
+    badge.style.display = 'none';
+  }
+}
+
+async function flushSyncQueue(){
+  if(!navigator.onLine || !currentShopId) return;
+  let queue = [];
+  try{
+    const r = await kasoStore.get(shopKey('kaso_sync_queue'));
+    queue = r ? JSON.parse(r.value) : [];
+  }catch(e){ return; }
+  if(queue.length === 0) return;
+
+  const remaining = [];
+  for(const item of queue){
+    try{
+      if(item.type === 'sale'){
+        await sb.from('sales').insert(item.payload);
+      }else if(item.type === 'inventory_update'){
+        await sb.from('inventory').update(item.payload.updates).eq('id', item.payload.id);
+      }else if(item.type === 'inventory_new'){
+        const { localId, ...insertData } = item.payload;
+        const { data } = await sb.from('inventory').insert(insertData).select().single();
+        if(data){
+          const localItem = inventory.find(i => i.id === localId);
+          if(localItem) localItem.id = data.id;
+        }
+      }else if(item.type === 'expense'){
+        await sb.from('expenses').insert(item.payload);
+      }else if(item.type === 'debt_new'){
+        const { localId, ...insertData } = item.payload;
+        const { data } = await sb.from('debts').insert(insertData).select().single();
+        if(data){
+          const localDebt = debts.find(d => d.id === localId);
+          if(localDebt) localDebt.id = data.id;
+        }
+      }else if(item.type === 'debt_update'){
+        await sb.from('debts').update(item.payload.updates).eq('id', item.payload.id);
+      }
+    }catch(e){
+      remaining.push(item); // keep it queued if it still fails
+    }
+  }
+  await kasoStore.set(shopKey('kaso_sync_queue'), JSON.stringify(remaining));
+  updateSyncBadge();
+  if(remaining.length < queue.length){
+    showToast("Synced offline data ✓");
+    loadData(); // refresh with server-confirmed records
+  }
+}
+
+window.addEventListener('online', flushSyncQueue);
+
+async function finalizeSale(saleData){
+  let sale = { id: Date.now(), timestamp: new Date().toISOString(), ...saleData };
+
+  // Update everything the user sees FIRST — instant, no waiting on the network at all.
+  sales.unshift(sale);
+  await saveSales();
+
+  const invMatch = lookupInventoryByName(sale.name) || inventory.find(i=>i.barcode===sale.barcode && sale.barcode);
+  if(invMatch){
+    invMatch.stock = Math.max(0, invMatch.stock - sale.qty);
+    await saveInventory();
+  }
+
+  // reset form
+  document.getElementById('itemName').value = '';
+  document.getElementById('barcode').value = '';
+  document.getElementById('qty').value = '1';
+  document.getElementById('price').value = '';
+  vatOn = false; fwOn = false;
+  document.getElementById('vatToggle').classList.remove('on');
+  document.getElementById('fwToggle').classList.remove('on');
+  document.getElementById('totalPreview').textContent = '';
+
+  render();
+  lastSale = sale;
+  if(isUnlocked || trialDaysLeft() > 0){
+    showToast("Sale recorded — tap Print if the customer needs a receipt");
+    document.getElementById('printLastBtn').style.display = 'block';
+  }else{
+    showToast("Sale recorded — unlock receipt printing in Settings");
+  }
+  if(invMatch && invMatch.stock <= LOW_STOCK_THRESHOLD){
+    setTimeout(()=>checkLowStock(true), 900);
+  }
+
+  // NOW sync to the database in the background — the person has already moved on to their next sale.
+  if(currentShopId){
+    try{
+      const { data, error } = await sb.from('sales').insert({
+        shop_id: currentShopId, item_name: sale.name, qty: sale.qty, price: sale.price,
+        vat: sale.vat, total: sale.total, paid_fw: sale.paidFw
+      }).select().single();
+      if(error) throw error;
+      sale.id = data.id;
+      sale.timestamp = data.created_at;
+      await saveSales();
+    }catch(e){
+      console.error("Offline or database unreachable — sale queued for sync:", e);
+      await queueForSync({
+        type: 'sale',
+        payload: { shop_id: currentShopId, item_name: sale.name, qty: sale.qty, price: sale.price, vat: sale.vat, total: sale.total, paid_fw: sale.paidFw }
+      });
+      updateSyncBadge();
+    }
+    if(invMatch){
+      try{
+        const { error } = await sb.from('inventory').update({ stock: invMatch.stock }).eq('id', invMatch.id);
+        if(error) throw error;
+      }catch(e){
+        console.error("Offline or unreachable — stock update queued:", e);
+        await queueForSync({ type: 'inventory_update', payload: { id: invMatch.id, updates: {stock: invMatch.stock} } });
+        updateSyncBadge();
+      }
+    }
+  }
+}
+
+function printReceipt(sale){
+  const area = document.getElementById('printArea');
+  const date = new Date(sale.timestamp);
+  const receiptNo = String(sale.id).replace(/-/g, '').slice(-8).toUpperCase();
+  area.innerHTML = `
+    <div style="font-family:'Courier New',monospace;font-size:13px;width:280px;">
+      <div style="text-align:center;font-weight:bold;">${shopName}</div>
+      <div style="text-align:center;">${shopLocation}</div>
+      <hr>
+      <div>Receipt #${receiptNo}</div>
+      <div>${date.toLocaleString()}</div>
+      <hr>
+      <div style="display:flex;justify-content:space-between;"><span>${sale.name} x${sale.qty}</span><span>${fmt(sale.subtotal)}</span></div>
+      ${sale.vatApplied ? `<div style="display:flex;justify-content:space-between;"><span>VAT (${vatRate}%)</span><span>${fmt(sale.vat)}</span></div>` : ''}
+      <hr>
+      <div style="display:flex;justify-content:space-between;font-weight:bold;"><span>TOTAL</span><span>${fmt(sale.total)}</span></div>
+      <div>${sale.paidFw ? 'Paid via Flutterwave' : 'Paid cash'}</div>
+      <hr>
+      <div style="text-align:center;">Thank you!</div>
+      <div style="text-align:center;margin-top:8px;"><svg id="receiptBarcode"></svg></div>
+    </div>
+  `;
+
+  try{
+    if(typeof JsBarcode === 'function'){
+      JsBarcode("#receiptBarcode", receiptNo, {format:"CODE128", width:1.5, height:40, displayValue:false, margin:0});
+    }
+  }catch(e){ console.error("Barcode render failed:", e); }
+
+  if(btPrinterDevice && btPrinterDevice.gatt.connected){
+    printViaBluetooth(sale);
+  }else{
+    window.print(); // falls back to browser print (WiFi printer, save as PDF, share)
+  }
+}
+
+/* ---------- BLUETOOTH THERMAL PRINTER (Android Chrome only) ---------- */
+let btPrinterDevice = null;
+let btPrinterCharacteristic = null;
+
+// Common service/characteristic UUIDs used by many cheap ESC/POS Bluetooth printers.
+// Some printer brands use different UUIDs — if pairing succeeds but nothing prints,
+// this is the first thing to check against your specific printer's documentation.
+const BT_PRINTER_SERVICE = 0x18F0;
+const BT_PRINTER_CHARACTERISTIC = 0x2AF1;
+
+async function pairBluetoothPrinter(){
+  if(!navigator.bluetooth){
+    showToast("Bluetooth printing isn't supported on this browser/device");
+    return;
+  }
+  try{
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [{ services: [BT_PRINTER_SERVICE] }],
+      optionalServices: [BT_PRINTER_SERVICE]
+    });
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(BT_PRINTER_SERVICE);
+    const characteristic = await service.getCharacteristic(BT_PRINTER_CHARACTERISTIC);
+
+    btPrinterDevice = device;
+    btPrinterCharacteristic = characteristic;
+    await kasoStore.set('kaso_bt_printer_name', device.name || 'Printer');
+    updatePrinterStatus();
+    showToast("Printer connected: " + (device.name || "Bluetooth printer"));
+
+    device.addEventListener('gattserverdisconnected', () => {
+      updatePrinterStatus();
+    });
+  }catch(e){
+    showToast("Couldn't connect — check the printer is on and in range");
+  }
+}
+
+function updatePrinterStatus(){
+  const el = document.getElementById('printerStatus');
+  if(!el) return;
+  if(btPrinterDevice && btPrinterDevice.gatt.connected){
+    el.textContent = "Connected: " + (btPrinterDevice.name || "Bluetooth printer");
+    el.style.color = 'var(--teal-dark)';
+  }else{
+    el.textContent = "No Bluetooth printer connected";
+    el.style.color = 'var(--ink-soft)';
+  }
+}
+
+function escposReceipt(sale){
+  // Builds raw ESC/POS commands: init, center, bold, text lines, barcode, cut
+  const enc = new TextEncoder();
+  const ESC = 0x1B, GS = 0x1D;
+  const parts = [];
+  const push = (...bytes) => parts.push(new Uint8Array(bytes));
+  const text = (str) => parts.push(enc.encode(str));
+  const receiptNo = String(sale.id).replace(/-/g, '').slice(-8).toUpperCase();
+
+  push(ESC, 0x40);                 // init
+  push(ESC, 0x61, 0x01);           // center align
+  push(ESC, 0x45, 0x01);           // bold on
+  text(shopName + "\n");
+  push(ESC, 0x45, 0x00);           // bold off
+  text(shopLocation + "\n");
+  text("--------------------------\n");
+  push(ESC, 0x61, 0x00);           // left align
+  text(`Receipt #${receiptNo}\n`);
+  text(new Date(sale.timestamp).toLocaleString() + "\n");
+  text("--------------------------\n");
+  text(`${sale.name} x${sale.qty}\n`);
+  text(`  ${fmt(sale.subtotal)}\n`);
+  if(sale.vatApplied) text(`VAT (${vatRate}%): ${fmt(sale.vat)}\n`);
+  text("--------------------------\n");
+  push(ESC, 0x45, 0x01);
+  text(`TOTAL: ${fmt(sale.total)}\n`);
+  push(ESC, 0x45, 0x00);
+  text(sale.paidFw ? "Paid via Flutterwave\n" : "Paid cash\n");
+  text("--------------------------\n");
+  push(ESC, 0x61, 0x01);
+  text("Thank you!\n\n");
+
+  // Native printer barcode (CODE39) — most cheap thermal printers support this directly,
+  // far more reliable over Bluetooth than sending a barcode image.
+  push(GS, 0x68, 0x40);            // barcode height
+  push(GS, 0x77, 0x02);            // barcode width
+  push(GS, 0x48, 0x02);            // print human-readable text below barcode
+  const barcodeData = `*${receiptNo}*`;
+  push(GS, 0x6B, 0x04, barcodeData.length);  // CODE39, length
+  text(barcodeData);
+  text("\n\n\n");
+  push(GS, 0x56, 0x00);            // cut paper (if supported)
+
+  const totalLen = parts.reduce((a,p)=>a+p.length, 0);
+  const merged = new Uint8Array(totalLen);
+  let offset = 0;
+  parts.forEach(p => { merged.set(p, offset); offset += p.length; });
+  return merged;
+}
+
+async function printViaBluetooth(sale){
+  try{
+    const data = escposReceipt(sale);
+    // Bluetooth writes are chunked — most printers cap around 180-512 bytes per write
+    const chunkSize = 180;
+    for(let i = 0; i < data.length; i += chunkSize){
+      await btPrinterCharacteristic.writeValue(data.slice(i, i + chunkSize));
+    }
+    showToast("Sent to printer");
+  }catch(e){
+    showToast("Print failed — reconnect the printer in Settings");
+  }
+}
+
+async function testBluetoothPrint(){
+  if(!btPrinterDevice || !btPrinterDevice.gatt.connected){
+    showToast("Connect a printer first");
+    return;
+  }
+  const testSale = {
+    name: "Test item", qty: 1, subtotal: 1000, vat: 0, total: 1000,
+    vatApplied: false, paidFw: false, timestamp: new Date().toISOString()
+  };
+  await printViaBluetooth(testSale);
+}
+
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+function isToday(iso){
+  const d = new Date(iso), t = new Date();
+  return d.toDateString() === t.toDateString();
+}
+function isThisMonth(iso){
+  const d = new Date(iso), t = new Date();
+  return d.getMonth()===t.getMonth() && d.getFullYear()===t.getFullYear();
+}
+
+function render(){
+  applyLanguage();
+
+  const debugShopIdEl = document.getElementById('debugShopId');
+  if(debugShopIdEl) debugShopIdEl.textContent = currentShopId || 'NONE — this is the bug';
+
+  // Keep item name suggestions in sync with current inventory
+  const datalist = document.getElementById('itemNameList');
+  if(datalist){
+    datalist.innerHTML = inventory.map(i => `<option value="${i.name}">`).join('');
+  }
+
+  // header stats
+  const todaySales = sales.filter(s=>isToday(s.timestamp));
+  const todayTotal = todaySales.reduce((a,s)=>a+s.total,0);
+  document.getElementById('todayTotal').textContent = fmt(todayTotal);
+  document.getElementById('todayCount').textContent = todaySales.length;
+  document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+
+  // recent list (home)
+  const recentList = document.getElementById('recentSalesList');
+  const empty = document.getElementById('emptyState');
+  recentList.innerHTML = '';
+  if(sales.length === 0){
+    empty.style.display = 'block';
+  }else{
+    empty.style.display = 'none';
+    sales.slice(0,5).forEach(s=>{
+      recentList.appendChild(saleRow(s));
+    });
+  }
+
+  // history
+  const historyList = document.getElementById('historyList');
+  const historyEmpty = document.getElementById('historyEmpty');
+  historyList.innerHTML = '';
+  if(sales.length === 0){
+    historyEmpty.style.display = 'block';
+  }else{
+    historyEmpty.style.display = 'none';
+    sales.forEach(s=>historyList.appendChild(saleRow(s)));
+  }
+
+  // tax
+  const monthSales = sales.filter(s=>isThisMonth(s.timestamp));
+  const gross = monthSales.reduce((a,s)=>a+s.total,0);
+  const vat = monthSales.reduce((a,s)=>a+s.vat,0);
+  document.getElementById('taxGross').textContent = fmt(gross);
+  document.getElementById('taxVat').textContent = fmt(vat);
+  document.getElementById('taxNet').textContent = fmt(gross - vat);
+
+  // stock
+  const stockList = document.getElementById('stockList');
+  const stockEmpty = document.getElementById('stockEmpty');
+  stockList.innerHTML = '';
+  if(inventory.length === 0){
+    stockEmpty.style.display = 'block';
+  }else{
+    stockEmpty.style.display = 'none';
+    inventory.forEach(item=>{
+      const div = document.createElement('div');
+      div.className = 'stock-item';
+      const low = item.stock <= 5;
+      div.innerHTML = `
+        <div class="info">
+          <div class="name">${item.name}</div>
+          <div class="meta">${fmt(item.price)}/${item.unit || 'pcs'}${item.barcode ? ' · '+item.barcode : ''}</div>
+        </div>
+        <div class="stock-actions">
+          <span class="stock-count ${low?'low':''}">${item.stock} ${item.unit || 'pcs'}</span>
+          <button class="btn-ghost" onclick="adjustStock(${item.id}, 1)">+</button>
+          <button class="btn-ghost" onclick="adjustStock(${item.id}, -1)">−</button>
+        </div>
+      `;
+      stockList.appendChild(div);
+    });
+  }
+  renderReport();
+}
+
+function saleRow(s){
+  const div = document.createElement('div');
+  div.className = 'sale-item';
+  const d = new Date(s.timestamp);
+  div.innerHTML = `
+    <div class="info">
+      <div class="name">${s.name} ${s.qty>1?'x'+s.qty:''}</div>
+      <div class="meta">${d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}, ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} ${s.vatApplied?'· VAT':''}</div>
+    </div>
+    <div class="amount ${s.paidFw?'paid':''}">${fmt(s.total)}</div>
+  `;
+  return div;
+}
+
+async function clearAllData(){
+  if(confirm("This will delete all recorded sales. Continue?")){
+    sales = [];
+    await saveSales();
+    render();
+    showToast("All data cleared");
+  }
+}
+
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  const tab = document.querySelector(`.tab[data-screen="${name}"]`);
+  if(tab) tab.classList.add('active');
+}
+
+checkSession();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
